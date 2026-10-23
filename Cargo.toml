@@ -5,11 +5,13 @@ members = [
     "crates/yura-llm",
     "crates/yura-avatar",
     "crates/yura-store",
+    "crates/yura-docs",
+    "crates/yura-tools",
     "src-tauri",
 ]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.77"
 license = "MIT"
@@ -23,6 +25,8 @@ yura-core = { path = "crates/yura-core" }
 yura-llm = { path = "crates/yura-llm" }
 yura-avatar = { path = "crates/yura-avatar" }
 yura-store = { path = "crates/yura-store" }
+yura-docs = { path = "crates/yura-docs" }
+yura-tools = { path = "crates/yura-tools" }
 
 # ── serialization ──────────────────────────────────────────────
 serde = { version = "1", features = ["derive"] }

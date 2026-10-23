@@ -1,7 +1,7 @@
 {
   "name": "yura-ui",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Yura's renderer: three.js stage, VRM avatar, glass UI.",
   "scripts": {

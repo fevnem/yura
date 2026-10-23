@@ -1,0 +1,28 @@
+[package]
+name = "yura-docs"
+description = "Turns dropped files into model-ready text and image parts."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+tracing.workspace = true
+
+# ── document parsing ───────────────────────────────────────────
+# pdf-extract wraps lopdf and walks page content streams itself, so text comes
+# out of the PDF rather than out of a shell-out to poppler. Both crates are pure
+# Rust: no C toolchain, no CMake, which is what keeps the
+# `x86_64-pc-windows-msvc` cross-build from Linux working at all.
+pdf-extract = "0.12"
+# Direct dependency on lopdf only to ask "is this document encrypted?" before
+# extraction. pdf-extract reports that case as a generic parse failure, and the
+# user deserves a real answer ("unlock it") instead of "not a readable PDF".
+lopdf = "0.42"
+
+# ── encoding ───────────────────────────────────────────────────
+# Images travel to the renderer and to multimodal models as data URLs, so the
+# bytes need base64. Already in the workspace tree via the HTTP stack.
+base64 = "0.22"

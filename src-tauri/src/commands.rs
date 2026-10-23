@@ -166,6 +166,16 @@ pub async fn send_message(
     messages.push(Message::user(&text));
 
     let mut system = settings.persona.compiled_system_prompt();
+
+    // She may only be told about tools she actually has. A prompt that promises
+    // abilities the user turned off produces a model that asks for them anyway.
+    if settings.abilities.python
+        || settings.abilities.read_files
+        || settings.abilities.write_files
+        || !settings.abilities.workspace.trim().is_empty()
+    {
+        system.push_str(&crate::tools_cmd::tool_protocol(&settings.abilities));
+    }
     system.push_str(&skill::compile(&state.skills.list()));
 
     let request = ChatRequest {

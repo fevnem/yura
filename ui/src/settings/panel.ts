@@ -19,13 +19,33 @@ export const THEMES: { id: string; label: string; ink: string; a: string; hue: n
   { id: 'mono', label: 'Mono', ink: '#0a0a0b', a: '#242426', hue: 0 },
 ];
 
-type SectionId = 'model' | 'persona' | 'skills' | 'voice' | 'avatar' | 'appearance' | 'window';
+type SectionId =
+  | 'model'
+  | 'persona'
+  | 'skills'
+  | 'voice'
+  | 'avatar'
+  | 'abilities'
+  | 'library'
+  | 'resources'
+  | 'general'
+  | 'appearance'
+  | 'window';
 
 interface SectionMeta {
   id: SectionId;
   label: string;
   summary: string;
   icon: string;
+}
+
+async function applyGeneral(general: { tray: boolean; autostart: boolean; close_to_tray: boolean; notifications: boolean }): Promise<void> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  try {
+    await invoke('apply_general', { general });
+  } catch {
+    /* the toggle still persists; the OS may simply refuse */
+  }
 }
 
 const SECTIONS: SectionMeta[] = [
@@ -64,6 +84,30 @@ const SECTIONS: SectionMeta[] = [
     label: 'Appearance',
     summary: 'Theme, accent and motion',
     icon: '<circle cx="8" cy="8" r="5.4"/><path d="M8 2.6v10.8M2.6 8h10.8"/>',
+  },
+  {
+    id: 'abilities',
+    label: 'Abilities',
+    summary: 'Python, files, and the one folder she may touch',
+    icon: '<path d="M5.4 2.6 2.2 8l3.2 5.4M10.6 2.6 13.8 8l-3.2 5.4"/>',
+  },
+  {
+    id: 'library',
+    label: 'Library',
+    summary: 'The folder she reads and writes for you',
+    icon: '<path d="M2.6 4.2a1 1 0 0 1 1-1h3l1.2 1.6h4.6a1 1 0 0 1 1 1v6.4a1 1 0 0 1-1 1H3.6a1 1 0 0 1-1-1z"/>',
+  },
+  {
+    id: 'resources',
+    label: 'Resources',
+    summary: 'Downloadable voices and models — nothing is bundled',
+    icon: '<path d="M8 2.6v7.2M5.2 7.2 8 10l2.8-2.8"/><path d="M3 11.6v1.2a.8.8 0 0 0 .8.8h8.4a.8.8 0 0 0 .8-.8v-1.2"/>',
+  },
+  {
+    id: 'general',
+    label: 'General',
+    summary: 'Tray, start on login, notifications',
+    icon: '<circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v1.6M8 12.6v1.6M1.8 8h1.6M12.6 8h1.6M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1"/>',
   },
   {
     id: 'window',
@@ -581,6 +625,196 @@ export class SettingsPanel {
           }),
         ];
       }
+
+      case 'abilities': {
+        const folder = el('div', 'row-inline');
+        const label = el('code', 'path-chip', d.abilities.workspace || 'no folder chosen');
+        const pick = el('button', 'btn-ghost', d.abilities.workspace ? 'Change…' : 'Choose folder…') as HTMLButtonElement;
+        pick.type = 'button';
+        pick.addEventListener('click', async () => {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const chosen = await invoke<string | null>('pick_workspace');
+          if (chosen) {
+            d.abilities.workspace = chosen;
+            label.textContent = chosen;
+            pick.textContent = 'Change…';
+          }
+        });
+        folder.append(label, pick);
+
+        return [
+          this.row('Run Python', 'She can write and run scripts. Your interpreter, your permissions, 20 s limit.', {
+            kind: 'toggle',
+            value: d.abilities.python,
+            onChange: (v) => {
+              d.abilities.python = v === 'true';
+              this.draw('abilities');
+            },
+          }),
+          this.row('Workspace folder', 'The only folder she may read or write. Nothing outside it, ever.', {
+            kind: 'custom',
+            node: folder,
+          }),
+          this.row('Read files', 'Let her open files in that folder.', {
+            kind: 'toggle',
+            value: d.abilities.read_files,
+            onChange: (v) => {
+              d.abilities.read_files = v === 'true';
+            },
+          }),
+          this.row('Write files', 'Let her create and change files. Every write asks first.', {
+            kind: 'toggle',
+            value: d.abilities.write_files,
+            onChange: (v) => {
+              d.abilities.write_files = v === 'true';
+            },
+          }),
+          this.row('Ask before running', 'Approve or deny each script and write in the chat.', {
+            kind: 'toggle',
+            value: d.abilities.ask_before_running,
+            onChange: (v) => {
+              d.abilities.ask_before_running = v === 'true';
+            },
+          }),
+        ];
+      }
+
+      case 'library': {
+        const body = el('div', 'row-inline');
+        const list = el('code', 'path-chip', 'loading…');
+        const refresh = el('button', 'btn-ghost', 'Refresh') as HTMLButtonElement;
+        refresh.type = 'button';
+
+        const load = async () => {
+          if (!d.abilities.workspace) {
+            list.textContent = 'choose a workspace folder first';
+            return;
+          }
+          const { invoke } = await import('@tauri-apps/api/core');
+          try {
+            const entries = await invoke<{ name: string; dir: boolean; bytes: number }[]>('library_list');
+            list.textContent = entries.length
+              ? entries.map((e) => (e.dir ? `${e.name}/` : `${e.name} · ${Math.round(e.bytes / 1024)} KB`)).join('\n')
+              : 'empty';
+          } catch (error) {
+            list.textContent = String(error);
+          }
+        };
+        refresh.addEventListener('click', () => void load());
+        void load();
+        body.append(list, refresh);
+
+        return [
+          this.row('Files she can see', 'Read-only view of the workspace folder.', { kind: 'custom', node: body }),
+          this.row('Open data folder', 'Settings, chats, skills, resources — all plain files.', {
+            kind: 'custom',
+            node: (() => {
+              const btn = el('button', 'btn-ghost', 'Open %APPDATA%\\Yura') as HTMLButtonElement;
+              btn.type = 'button';
+              btn.addEventListener('click', async () => {
+                const { invoke } = await import('@tauri-apps/api/core');
+                await invoke('open_data_dir');
+              });
+              return btn;
+            })(),
+          }),
+        ];
+      }
+
+      case 'resources': {
+        const packs = [
+          {
+            id: 'moss-tts-nano',
+            label: 'MOSS-TTS-Nano',
+            size: '~200 MB',
+            note: 'Expressive neural voice. OpenMOSS, Apache-2.0.',
+            url: 'https://huggingface.co/OpenMOSS/MOSS-TTS-Nano/resolve/main/config.json',
+            file: 'config.json',
+          },
+          {
+            id: 'kokoro-82m',
+            label: 'Kokoro 82M',
+            size: '86 MB',
+            note: '54 voices, quick on CPU. Apache-2.0.',
+            url: 'https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/config.json',
+            file: 'config.json',
+          },
+          {
+            id: 'whisper-tiny',
+            label: 'Whisper tiny',
+            size: '75 MB',
+            note: 'Speech to text, for the microphone.',
+            url: 'https://huggingface.co/openai/whisper-tiny/resolve/main/config.json',
+            file: 'config.json',
+          },
+        ];
+
+        const wrap = el('div', 'pack-list');
+        const grid = document.createElement('div');
+        grid.className = 'pack-grid';
+
+        for (const pack of packs) {
+          const card = document.createElement('div');
+          card.className = 'pack';
+          const title = el('span', 'pack-name', pack.label);
+          const meta = el('span', 'pack-meta', `${pack.size} · ${pack.note}`);
+          const state = el('span', 'pack-state', 'not installed');
+          const action = el('button', 'btn-ghost', 'Download') as HTMLButtonElement;
+          action.type = 'button';
+          action.addEventListener('click', async () => {
+            const { invoke } = await import('@tauri-apps/api/core');
+            action.disabled = true;
+            state.textContent = 'downloading…';
+            try {
+              await invoke('download_resource', { id: pack.id, url: pack.url, filename: pack.file });
+              state.textContent = 'installed';
+              action.textContent = 'Remove';
+            } catch (error) {
+              state.textContent = String(error).slice(0, 60);
+              action.disabled = false;
+            }
+          });
+          card.append(title, meta, state, action);
+          grid.append(card);
+        }
+
+        wrap.append(grid, el('p', 'row-help', 'Nothing is bundled with the installer. Downloads land in %APPDATA%\\Yura\\resources.'));
+        return [this.row('Voice and speech models', 'Optional. The Windows voices work with nothing downloaded.', { kind: 'custom', node: wrap })];
+      }
+
+      case 'general':
+        return [
+          this.row('Stay in the tray', 'Closing the window keeps her running.', {
+            kind: 'toggle',
+            value: d.general.tray,
+            onChange: (v) => {
+              d.general.tray = v === 'true';
+              void applyGeneral(d.general);
+            },
+          }),
+          this.row('Close to tray', 'The X hides the window instead of quitting.', {
+            kind: 'toggle',
+            value: d.general.close_to_tray,
+            onChange: (v) => {
+              d.general.close_to_tray = v === 'true';
+            },
+          }),
+          this.row('Start on login', 'She is already there when you sit down.', {
+            kind: 'toggle',
+            value: d.general.autostart,
+            onChange: (v) => {
+              d.general.autostart = v === 'true';
+              void applyGeneral(d.general);
+            },
+          }),
+          this.row('Notifications', 'Timers and reminders may reach the desktop.', {
+            kind: 'toggle',
+            value: d.general.notifications,
+            onChange: (v) => {
+              d.general.notifications = v === 'true';
+            },
+          }),
+        ];
 
       case 'window':
       default:

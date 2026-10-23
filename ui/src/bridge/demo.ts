@@ -120,6 +120,21 @@ const DEFAULT_SETTINGS: Settings = {
     show_transcript: true,
     reduce_motion: false,
   },
+
+  abilities: {
+    python: false,
+    read_files: true,
+    write_files: false,
+    ask_before_running: true,
+    workspace: '',
+  },
+
+  general: {
+    tray: true,
+    close_to_tray: true,
+    autostart: false,
+    notifications: true,
+  },
 };
 
 const demoChats: Chat[] = [

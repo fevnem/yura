@@ -3,6 +3,51 @@
 All notable changes to Yura. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [SemVer](https://semver.org/).
 
+## [0.3.0] — 2026-10-23
+
+She can act.
+
+### Added — abilities
+
+- **Python.** Off by default. When on she writes and runs scripts in a workspace
+  folder you choose: 20 s limit, `-I` isolation, output capped, hard kill on
+  timeout.
+- **Files.** Read, write and list inside that folder only. Paths are checked
+  lexically *and* after canonicalisation, so `..` and escaping symlinks are both
+  refused.
+- **Approve / deny in the chat.** Every script, write and notification produces a
+  card showing exactly what will happen. No answer in two minutes means no.
+- **The agent protocol is plain text** — a fenced `yura:run_python` block — so it
+  works with any provider, including local models with no tool-calling.
+- **Timers, tasks, notifications.** `set_timer`, `add_task`, `list_tasks`,
+  `complete_task`, `notify`. Timers survive a closed window and fire once.
+- **Tray and start-on-login**, with close-to-tray.
+- **Attachments** read through `yura-docs`: PDF text, magic-byte sniffing, and an
+  honest "this looks like a scan" when there is no text layer.
+
+### Added — settings
+
+- **Abilities** — Python, file access, workspace folder, approval switch.
+- **Library** — the files in that folder, and the data directory.
+- **Resources** — voice and speech models are downloaded, never bundled:
+  MOSS-TTS-Nano, Kokoro-82M, Whisper tiny. Interrupted downloads never become
+  files.
+- **General** — tray, close-to-tray, start on login, notifications.
+
+### Changed
+
+- The system prompt describes only the tools the user has enabled.
+- Side effects (tray visibility, autostart) apply immediately, not on restart.
+
+### Fixed
+
+- A flaky ordering test that assumed millisecond resolution between creations.
+
+### Known limits
+
+- **MCP servers** are designed (`docs/plan-0.3.md` §4) but not in this build.
+- Whisper downloads as a resource, but the microphone is not wired to it yet.
+
 ## [0.2.0] — 2026-10-23
 
 Repositioned as a **study and research companion**, and given the structure a

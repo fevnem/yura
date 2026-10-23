@@ -97,6 +97,21 @@ export interface UiSettings {
   reduce_motion: boolean;
 }
 
+export interface Abilities {
+  python: boolean;
+  read_files: boolean;
+  write_files: boolean;
+  ask_before_running: boolean;
+  workspace: string;
+}
+
+export interface General {
+  tray: boolean;
+  close_to_tray: boolean;
+  autostart: boolean;
+  notifications: boolean;
+}
+
 export interface Settings {
   version: number;
   persona: Persona;
@@ -104,6 +119,8 @@ export interface Settings {
   voice: VoiceSettings;
   avatar: AvatarSettings;
   ui: UiSettings;
+  abilities: Abilities;
+  general: General;
 }
 
 export interface PresetDto {

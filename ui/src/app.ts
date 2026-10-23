@@ -22,6 +22,7 @@ import { IdleAnimator } from './avatar/idle';
 import { LipSync } from './avatar/lipsync';
 import { Composer } from './chat/composer';
 import { ChatSidebar } from './chat/sidebar';
+import { bindApprovals, describe, extractToolCalls, runTool, type ToolCall } from './agent/tools';
 import { Welcome } from './chat/welcome';
 import { Transcript } from './chat/transcript';
 import { createLighting, type LightingHandle } from './scene/lights';
@@ -196,6 +197,8 @@ export class App {
     this.welcome = new Welcome(must<HTMLElement>('#welcome'), (prompt) => {
       this.composer.setValue(prompt);
     });
+
+    bindApprovals(must<HTMLElement>('#transcript'));
 
     // The landing screen owns the left half, so she steps aside while it is up.
     this.setLanding(true);
@@ -401,7 +404,9 @@ export class App {
       if (payload.context_window) {
         this.telemetry.setContext(payload.context_tokens ?? 0, payload.context_window);
       }
-      this.transcript.finishStreaming(payload.text, this.emotion.currentEmotion);
+      const split = extractToolCalls(payload.text);
+      this.transcript.finishStreaming(split.clean || payload.text, this.emotion.currentEmotion);
+      if (split.calls.length > 0) void this.runAgentCalls(split.calls);
       store.patch({ streaming: false, draft: '' });
       this.composer.setStreaming(false);
       void this.refreshChats();
@@ -409,7 +414,9 @@ export class App {
 
     await on<ChatCancelEvent>('chat:cancelled', (payload) => {
       this.telemetry.cancel();
-      this.transcript.finishStreaming(payload.text, this.emotion.currentEmotion);
+      const split = extractToolCalls(payload.text);
+      this.transcript.finishStreaming(split.clean || payload.text, this.emotion.currentEmotion);
+      if (split.calls.length > 0) void this.runAgentCalls(split.calls);
       store.patch({ streaming: false });
       this.composer.setStreaming(false);
       this.setStatus(null);
@@ -437,9 +444,41 @@ export class App {
     window.addEventListener('beforeunload', () => this.speech.cancel());
   }
 
-  private async send(text: string): Promise<void> {
+  /**
+   * Execute what she asked for, show each run, then hand the results back so she
+   * can answer for real. One round only per turn — a loop is how runaway agents
+   * happen, and the user can always ask again.
+   */
+  private async runAgentCalls(calls: ToolCall[]): Promise<void> {
+    const results: string[] = [];
+    for (const call of calls) {
+      const outcome = await runTool(call.name, call.args);
+      this.note(describe(call.name, outcome), outcome.ok);
+      results.push(`Tool \`${call.name}\` returned:\n\n${outcome.output}`);
+    }
+    if (results.length === 0) return;
+    await this.send(
+      `[tool results — not written by the user]\n\n${results.join('\n\n')}\n\nContinue from this. Do not repeat the result verbatim.`,
+      true,
+    );
+  }
+
+  /** A one-line note in the transcript, for things that are not chat. */
+  private note(text: string, ok: boolean): void {
+    const row = document.createElement('div');
+    row.className = 'tool-row';
+    row.dataset.ok = ok ? 'yes' : 'no';
+    row.textContent = text;
+    const box = document.querySelector<HTMLElement>('#transcript');
+    if (box) {
+      box.append(row);
+      box.scrollTop = box.scrollHeight;
+    }
+  }
+
+  private async send(text: string, silent = false): Promise<void> {
     this.setLanding(false);
-    this.transcript.addUser(text);
+    if (!silent) this.transcript.addUser(text);
     this.transcript.beginStreaming();
     this.setStatus('thinking');
 

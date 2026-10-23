@@ -297,6 +297,56 @@ impl Default for UiSettings {
     }
 }
 
+
+/// What she may do beyond talking.
+///
+/// Off by default, and the workspace is a single folder the user picked. The
+/// approval flag is stored separately from the capability on purpose: turning
+/// Python on should not silently turn permission off.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Abilities {
+    pub python: bool,
+    pub read_files: bool,
+    pub write_files: bool,
+    pub ask_before_running: bool,
+    /// Absolute path of the one folder she may touch.
+    pub workspace: String,
+}
+
+impl Default for Abilities {
+    fn default() -> Self {
+        Self {
+            python: false,
+            read_files: true,
+            write_files: false,
+            ask_before_running: true,
+            workspace: String::new(),
+        }
+    }
+}
+
+/// Window and desktop behaviour.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct General {
+    pub tray: bool,
+    pub close_to_tray: bool,
+    pub autostart: bool,
+    pub notifications: bool,
+}
+
+impl Default for General {
+    fn default() -> Self {
+        Self {
+            tray: true,
+            close_to_tray: true,
+            autostart: false,
+            notifications: true,
+        }
+    }
+}
+
 /// The whole persisted state, versioned.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -307,6 +357,8 @@ pub struct Settings {
     pub voice: VoiceSettings,
     pub avatar: AvatarSettings,
     pub ui: UiSettings,
+    pub abilities: Abilities,
+    pub general: General,
 }
 
 impl Default for Settings {
@@ -318,6 +370,8 @@ impl Default for Settings {
             voice: VoiceSettings::default(),
             avatar: AvatarSettings::default(),
             ui: UiSettings::default(),
+            abilities: Abilities::default(),
+            general: General::default(),
         }
     }
 }
