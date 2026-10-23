@@ -4,11 +4,7 @@
 
 # Yura
 
-**a quiet light that stays.**
-
-A lightweight AI companion for Windows. Not a chat window with a face bolted on —
-a character who lives in the corner of your screen, breathes, blinks, looks at
-you when you move the mouse, and speaks the words as they arrive.
+*<sub>a quiet light that stays</sub>*
 
 [![platform: Windows 10 | 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-ffb3c1?style=flat-square&labelColor=140f18)](#install)
 [![installer: 2.0 MB](https://img.shields.io/badge/installer-2.0%20MB-ffb3c1?style=flat-square&labelColor=140f18)](#install)
@@ -19,6 +15,10 @@ you when you move the mouse, and speaks the words as they arrive.
 <img src="docs/screens/01-hero.jpg" alt="Yura's window: a glowing character on the left, the conversation on the right, the composer at the bottom" width="880">
 
 </div>
+
+A lightweight AI companion for Windows. Not a chat window with a face bolted on —
+a character who lives in the corner of your screen, breathes, blinks, looks at you
+when you move the mouse, and speaks the words as they arrive.
 
 ## What this is
 
