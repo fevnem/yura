@@ -13,7 +13,7 @@
     "tauri:build": "tauri build",
     "build:windows": "tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc",
     "avatar:fetch": "node scripts/fetch-avatar.mjs",
-    "test:rust": "cargo test --workspace --target x86_64-unknown-linux-gnu",
+    "test": "cargo test -p yura-core -p yura-llm -p yura-avatar -p yura-store",
     "typecheck": "npm --prefix ui run typecheck"
   },
   "devDependencies": {
