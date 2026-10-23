@@ -150,6 +150,9 @@ pub struct LlmSettings {
     pub max_tokens: u32,
     /// Turns of history kept in context.
     pub context_turns: usize,
+    /// The model's context window, in tokens. Used for the live context meter.
+    /// Approximate is fine — providers do not advertise this consistently.
+    pub context_window: u32,
 }
 
 impl Default for LlmSettings {
@@ -164,6 +167,7 @@ impl Default for LlmSettings {
             top_p: 0.95,
             max_tokens: 512,
             context_turns: 24,
+            context_window: 32768,
         }
     }
 }
@@ -270,6 +274,8 @@ impl Default for AvatarSettings {
 #[serde(default)]
 pub struct UiSettings {
     pub always_on_top: bool,
+    /// Room palette: `midnight`, `dusk`, `ember`, `orchid` or `mono`.
+    pub theme: String,
     /// 0.6–1.0 window opacity.
     pub window_opacity: f32,
     /// Accent hue in degrees; drives the whole palette.
@@ -282,6 +288,7 @@ impl Default for UiSettings {
     fn default() -> Self {
         Self {
             always_on_top: false,
+            theme: "midnight".into(),
             window_opacity: 0.98,
             accent_hue: 340.0,
             show_transcript: true,
@@ -333,6 +340,7 @@ impl Settings {
         self.llm.top_p = self.llm.top_p.clamp(0.0, 1.0);
         self.llm.max_tokens = self.llm.max_tokens.clamp(16, 8192);
         self.llm.context_turns = self.llm.context_turns.clamp(0, 200);
+        self.llm.context_window = self.llm.context_window.clamp(2_048, 2_000_000);
 
         self.voice.rate = self.voice.rate.clamp(0.5, 2.0);
         self.voice.pitch = self.voice.pitch.clamp(0.0, 2.0);
@@ -340,6 +348,11 @@ impl Settings {
 
         self.avatar.scale = self.avatar.scale.clamp(0.3, 2.5);
         self.avatar.lipsync_gain = self.avatar.lipsync_gain.clamp(0.0, 2.0);
+
+        const THEMES: [&str; 5] = ["midnight", "dusk", "ember", "orchid", "mono"];
+        if !THEMES.contains(&self.ui.theme.as_str()) {
+            self.ui.theme = "midnight".into();
+        }
 
         self.ui.window_opacity = self.ui.window_opacity.clamp(0.6, 1.0);
         self.ui.accent_hue = self.ui.accent_hue.rem_euclid(360.0);

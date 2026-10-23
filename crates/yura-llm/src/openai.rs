@@ -5,7 +5,7 @@ use tokio::sync::mpsc;
 use yura_core::{Message, Result, Role, YuraError};
 
 use crate::http::client;
-use crate::provider::{emit, ChatRequest, LlmProvider};
+use crate::provider::{emit, emit_text, ChatRequest, Delta, LlmProvider};
 use crate::sse::SseBuffer;
 
 /// Any server that speaks `POST {base}/chat/completions` with SSE deltas.
@@ -58,13 +58,24 @@ impl OpenAiCompatible {
     }
 }
 
-/// Pull the text out of one `chat.completion.chunk` frame.
+/// Pull the answer text out of one `chat.completion.chunk` frame.
 pub fn extract_delta(v: &Value) -> Option<&str> {
     v.get("choices")?
         .get(0)?
         .get("delta")?
         .get("content")?
         .as_str()
+        .filter(|s| !s.is_empty())
+}
+
+/// Reasoning models (DeepSeek-R1, QwQ, o-series via gateways) stream their
+/// scratchpad as `reasoning_content` — a separate field, not part of the answer.
+pub fn extract_reasoning(v: &Value) -> Option<&str> {
+    let delta = v.get("choices")?.get(0)?.get("delta")?;
+    delta
+        .get("reasoning_content")
+        .or_else(|| delta.get("reasoning"))
+        .and_then(Value::as_str)
         .filter(|s| !s.is_empty())
 }
 
@@ -84,7 +95,7 @@ impl LlmProvider for OpenAiCompatible {
     async fn stream_chat(
         &self,
         req: ChatRequest,
-        sink: mpsc::UnboundedSender<String>,
+        sink: mpsc::UnboundedSender<Delta>,
     ) -> Result<()> {
         self.verify_config()?;
 
@@ -131,8 +142,13 @@ impl LlmProvider for OpenAiCompatible {
                                 .unwrap_or("provider error");
                             return Err(YuraError::Other(msg.to_owned()));
                         }
+                        if let Some(thinking) = extract_reasoning(&v) {
+                            if !emit(&sink, Delta::Thinking(thinking.to_owned())) {
+                                return Ok(());
+                            }
+                        }
                         if let Some(delta) = extract_delta(&v) {
-                            if !emit(&sink, delta) {
+                            if !emit_text(&sink, delta) {
                                 return Ok(()); // consumer gone
                             }
                         }

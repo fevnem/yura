@@ -18,5 +18,5 @@ pub mod provider;
 pub mod registry;
 pub mod sse;
 
-pub use provider::{ChatRequest, LlmProvider};
+pub use provider::{ChatRequest, Delta, LlmProvider};
 pub use registry::build;

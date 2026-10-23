@@ -99,9 +99,9 @@ export function createPostFX(
 
   const bloom = new UnrealBloomPass(
     new THREE.Vector2(size.x, size.y),
-    quality === 'low' ? 0.28 : 0.42,
-    0.72,
-    0.82,
+    quality === 'low' ? 0.22 : 0.30,
+    0.7,
+    0.92,
   );
   bloom.enabled = quality !== 'low';
   composer.addPass(bloom);

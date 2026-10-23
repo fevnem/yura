@@ -14,8 +14,11 @@ import type {
   ChatStartEvent,
   Emotion,
   HistoryEntry,
+  Chat,
+  ChatSummary,
   PresetDto,
   Settings,
+  Skill,
   Utterance,
 } from './types';
 
@@ -88,6 +91,7 @@ const DEFAULT_SETTINGS: Settings = {
     top_p: 0.95,
     max_tokens: 512,
     context_turns: 24,
+    context_window: 32768,
   },
   voice: {
     enabled: true,
@@ -110,12 +114,59 @@ const DEFAULT_SETTINGS: Settings = {
   },
   ui: {
     always_on_top: false,
+    theme: 'midnight',
     window_opacity: 0.98,
     accent_hue: 340,
     show_transcript: true,
     reduce_motion: false,
   },
 };
+
+const demoChats: Chat[] = [
+  {
+    id: 'c1',
+    title: 'Kinetics before the exam',
+    pinned: true,
+    created: Date.now() - 9e5,
+    updated: Date.now() - 8e5,
+    messages: [
+      { role: 'assistant', content: "You're back. I kept the light on.", ts: Date.now() - 9e5 },
+      { role: 'user', content: 'long day', ts: Date.now() - 8.6e5 },
+      { role: 'assistant', content: 'Then sit down. You do not have to explain it to me yet.', ts: Date.now() - 8.5e5 },
+    ],
+  },
+  {
+    id: 'c2',
+    title: 'Paper: attention is all you need',
+    pinned: false,
+    created: Date.now() - 4e6,
+    updated: Date.now() - 3.9e6,
+    messages: [{ role: 'user', content: 'summarise the methods section', ts: Date.now() - 3.9e6 }],
+  },
+];
+
+function demoSummaries(): ChatSummary[] {
+  return demoChats
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      pinned: c.pinned,
+      updated: c.updated,
+      turns: c.messages.length,
+      preview: c.messages.find((m) => m.role === 'user')?.content ?? '',
+    }))
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updated - a.updated);
+}
+
+const demoSkills: Skill[] = [
+  {
+    id: 'paper-digest',
+    name: 'Paper digest',
+    description: 'Summarise a paper as claims, method, evidence, limits.',
+    enabled: true,
+    body: 'When the user shares a paper, answer in this order:\n1. The claim in one sentence.\n2. Method, in three bullets.\n3. What the evidence actually supports.\n4. The strongest objection.\nNever pad with praise.',
+  },
+];
 
 const DEMO_HISTORY: HistoryEntry[] = [
   { role: 'assistant', content: "You're back. I kept the light on.", ts: Date.now() - 900_000 },
@@ -138,7 +189,8 @@ const DEMO_REPLIES: Utterance[][] = [
 let demoReply = 0;
 let settings: Settings = structuredClone(DEFAULT_SETTINGS);
 
-function streamDemoReply(): void {
+function streamDemoReply(chatId?: string): void {
+  const chat = demoChats.find((c) => c.id === chatId) ?? demoChats[0];
   const beats = DEMO_REPLIES[demoReply % DEMO_REPLIES.length];
   demoReply += 1;
 
@@ -164,7 +216,12 @@ function streamDemoReply(): void {
   timers.add(
     window.setTimeout(() => {
       const text = beats.map((b) => b.text).join(' ');
-      emit('chat:done', { text, reply: { utterances: beats } } satisfies ChatDoneEvent);
+      emit('chat:done', {
+        text,
+        reply: { utterances: beats },
+        context_tokens: 1840,
+        context_window: 32768,
+      } satisfies ChatDoneEvent);
     }, delay + 200),
   );
 }
@@ -183,6 +240,9 @@ export async function demoInvoke<T>(
         version: '0.1.0-demo',
         data_dir: 'browser demo',
         configured: true,
+        skills: demoSkills,
+        skills_dir: 'browser demo/skills',
+        chats: demoSummaries(),
       } satisfies Bootstrap as T;
 
     case 'save_settings':
@@ -209,7 +269,7 @@ export async function demoInvoke<T>(
     }
 
     case 'send_message':
-      streamDemoReply();
+      streamDemoReply(args?.chatId as string | undefined);
       return undefined as T;
 
     case 'cancel_generation':
@@ -217,6 +277,63 @@ export async function demoInvoke<T>(
       timers.clear();
       emit('chat:cancelled', { text: '', reply: { utterances: [] } });
       return undefined as T;
+
+    case 'list_chats':
+      return demoSummaries() as T;
+
+    case 'new_chat': {
+      const chat: Chat = {
+        id: `c${Date.now().toString(16)}`,
+        title: 'New conversation',
+        pinned: false,
+        created: Date.now(),
+        updated: Date.now(),
+        messages: [],
+      };
+      demoChats.unshift(chat);
+      return chat as T;
+    }
+
+    case 'load_chat':
+      return (demoChats.find((c) => c.id === args?.id) ?? null) as T;
+
+    case 'rename_chat': {
+      const chat = demoChats.find((c) => c.id === args?.id);
+      if (chat) chat.title = String(args?.title ?? chat.title);
+      return undefined as T;
+    }
+
+    case 'pin_chat': {
+      const chat = demoChats.find((c) => c.id === args?.id);
+      if (chat) chat.pinned = Boolean(args?.pinned);
+      return undefined as T;
+    }
+
+    case 'delete_chat': {
+      const at = demoChats.findIndex((c) => c.id === args?.id);
+      if (at >= 0) demoChats.splice(at, 1);
+      return undefined as T;
+    }
+
+    case 'list_skills':
+      return demoSkills as T;
+
+    case 'save_skill': {
+      const incoming = args?.skill as Skill;
+      const id = incoming.id || incoming.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const next: Skill = { ...incoming, id };
+      const at = demoSkills.findIndex((s) => s.id === id);
+      if (at >= 0) demoSkills[at] = next;
+      else demoSkills.push(next);
+      return next as T;
+    }
+
+    case 'delete_skill': {
+      const id = args?.id as string;
+      const at = demoSkills.findIndex((s) => s.id === id);
+      if (at >= 0) demoSkills.splice(at, 1);
+      return undefined as T;
+    }
 
     case 'clear_history':
       DEMO_HISTORY.length = 0;

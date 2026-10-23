@@ -121,12 +121,39 @@ export class Avatar {
     this.hipsNode = humanoid?.getNormalizedBoneNode('hips') ?? null;
     if (this.headNode) this.headRest.copy(this.headNode.rotation);
 
+    this.relaxPose();
+
     const expressions = vrm.expressionManager?.expressions ?? [];
     for (const expression of expressions) {
       if (expression.expressionName) this.available.add(expression.expressionName);
     }
 
     vrm.update(0);
+  }
+
+  /**
+   * VRM ships in a T-pose; a companion must not. Drop the arms to a relaxed
+   * A-pose and keep the resting values so idle animation can breathe on top of
+   * them instead of fighting them.
+   */
+  private relaxPose(): void {
+    const humanoid = this.vrm?.humanoid;
+    if (!humanoid) return;
+
+    const pose = (bone: string, x: number, y: number, z: number) => {
+      const node = humanoid.getNormalizedBoneNode(bone as Parameters<typeof humanoid.getNormalizedBoneNode>[0]);
+      if (!node) return;
+      node.rotation.set(x, y, z);
+    };
+
+    // Left arm points +X, right arm points −X; rotating about Z drops them.
+    pose('leftUpperArm', 0.06, 0.0, -1.16);
+    pose('rightUpperArm', 0.06, 0.0, 1.16);
+    pose('leftLowerArm', 0.02, -0.12, -0.16);
+    pose('rightLowerArm', 0.02, 0.12, 0.16);
+    pose('leftHand', 0, 0, -0.08);
+    pose('rightHand', 0, 0, 0.08);
+    pose('head', 0, 0, 0);
   }
 
   private loadSpirit(hue: number): void {
@@ -199,10 +226,26 @@ export class Avatar {
       }
     }
 
-    for (const name of this.available) {
-      const value = this.scratch.get(name) ?? 0;
-      manager.setValue(name, THREE.MathUtils.clamp(value, 0, 1));
+    for (const requested of this.scratch.keys()) {
+      const actual = this.resolve(requested);
+      if (!actual) continue;
+      const value = this.scratch.get(requested) ?? 0;
+      manager.setValue(actual, THREE.MathUtils.clamp(value, 0, 1));
     }
+  }
+
+  /**
+   * Models do not always agree on casing — Sendagaya Shino ships a custom
+   * group called `Surprised`, not the VRM 1.0 preset `surprised`. Match
+   * case-insensitively so a mood is never silently dropped.
+   */
+  private resolve(name: string): string | null {
+    if (this.available.has(name)) return name;
+    const lower = name.toLowerCase();
+    for (const candidate of this.available) {
+      if (candidate.toLowerCase() === lower) return candidate;
+    }
+    return null;
   }
 
   dispose(): void {

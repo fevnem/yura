@@ -16,12 +16,14 @@ pub mod message;
 pub mod persona;
 pub mod reply;
 pub mod settings;
+pub mod skill;
 
 pub use emotion::Emotion;
 pub use error::{Result, YuraError};
 pub use message::{Message, Role};
 pub use persona::Persona;
 pub use reply::{parse, Reply, ReplyParser, Utterance};
+pub use skill::Skill;
 pub use settings::{
     preset, AvatarSettings, LlmSettings, ProviderKind, ProviderPreset, Settings, UiSettings,
     VoiceSettings, PRESETS, SETTINGS_VERSION,

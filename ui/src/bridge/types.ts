@@ -54,6 +54,15 @@ export interface LlmSettings {
   top_p: number;
   max_tokens: number;
   context_turns: number;
+  context_window: number;
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  body: string;
+  enabled: boolean;
 }
 
 export interface VoiceSettings {
@@ -81,6 +90,7 @@ export interface AvatarSettings {
 
 export interface UiSettings {
   always_on_top: boolean;
+  theme: string;
   window_opacity: number;
   accent_hue: number;
   show_transcript: boolean;
@@ -132,6 +142,30 @@ export interface HistoryEntry {
   ts: number;
 }
 
+export interface ChatTurn {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  ts: number;
+}
+
+export interface Chat {
+  id: string;
+  title: string;
+  pinned: boolean;
+  created: number;
+  updated: number;
+  messages: ChatTurn[];
+}
+
+export interface ChatSummary {
+  id: string;
+  title: string;
+  pinned: boolean;
+  updated: number;
+  turns: number;
+  preview: string;
+}
+
 export interface Bootstrap {
   settings: Settings;
   presets: PresetDto[];
@@ -140,6 +174,9 @@ export interface Bootstrap {
   version: string;
   data_dir: string;
   configured: boolean;
+  skills: Skill[];
+  skills_dir: string;
+  chats: ChatSummary[];
 }
 
 /* ── event payloads ─────────────────────────────────────────── */
@@ -156,6 +193,12 @@ export interface ChatDeltaEvent {
 export interface ChatDoneEvent {
   text: string;
   reply: Reply;
+  context_tokens: number;
+  context_window: number;
+}
+
+export interface ChatThinkingEvent {
+  delta: string;
 }
 
 export interface ChatCancelEvent {

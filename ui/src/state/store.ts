@@ -75,9 +75,10 @@ class Store {
 
 export const store = new Store();
 
-/** Apply the accent hue from settings to the CSS palette. */
+/** Apply the theme and accent hue to the CSS palette. */
 export function applyPalette(settings: Settings): void {
   const hue = ((settings.ui.accent_hue % 360) + 360) % 360;
   document.documentElement.style.setProperty('--hue', String(hue));
+  document.documentElement.dataset.theme = settings.ui.theme || 'midnight';
   document.documentElement.dataset.reduceMotion = String(settings.ui.reduce_motion);
 }

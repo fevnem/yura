@@ -20,9 +20,11 @@ use serde::Serialize;
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::mpsc;
+use yura_core::skill::{self, Skill};
 use yura_core::{Message, ReplyParser, Role, Settings, PRESETS};
+use yura_llm::Delta;
 use yura_llm::ChatRequest;
-use yura_store::HistoryEntry;
+use yura_store::{Chat, ChatSummary, HistoryEntry};
 
 use crate::state::AppState;
 
@@ -48,6 +50,9 @@ pub struct Bootstrap {
     pub data_dir: String,
     /// False until a model endpoint is usable — drives the setup card.
     pub configured: bool,
+    pub skills: Vec<Skill>,
+    pub skills_dir: String,
+    pub chats: Vec<ChatSummary>,
 }
 
 fn preset_list() -> Vec<PresetDto> {
@@ -87,6 +92,9 @@ pub fn bootstrap(state: State<'_, AppState>) -> Bootstrap {
             .parent()
             .map(|p| p.display().to_string())
             .unwrap_or_default(),
+        skills_dir: state.skills.dir().display().to_string(),
+        skills: state.skills.list(),
+        chats: state.chats.list(),
         settings,
     }
 }
@@ -143,6 +151,7 @@ pub fn apply_provider_preset(
 pub async fn send_message(
     app: AppHandle,
     state: State<'_, AppState>,
+    chat_id: String,
     text: String,
 ) -> Result<(), String> {
     let text = text.trim().to_owned();
@@ -153,25 +162,35 @@ pub async fn send_message(
     let settings = state.snapshot();
     let provider = yura_llm::build(&settings.llm).map_err(|e| e.to_string())?;
 
-    let mut messages = state.history.recent_messages(settings.llm.context_turns);
+    let mut messages = state.chats.context(&chat_id, settings.llm.context_turns);
     messages.push(Message::user(&text));
+
+    let mut system = settings.persona.compiled_system_prompt();
+    system.push_str(&skill::compile(&state.skills.list()));
 
     let request = ChatRequest {
         model: settings.llm.model.clone(),
-        system: Some(settings.persona.compiled_system_prompt()),
+        system: Some(system),
         messages,
         temperature: settings.llm.temperature,
         top_p: settings.llm.top_p,
         max_tokens: settings.llm.max_tokens,
     };
 
-    if let Err(e) = state.history.append_turn(Role::User, &text) {
+    let request_tokens: usize = request
+        .system
+        .as_deref()
+        .map(|s| s.chars().count() / 4)
+        .unwrap_or(0)
+        + request.messages.iter().map(Message::approx_tokens).sum::<usize>();
+
+    if let Err(e) = state.chats.append(&chat_id, Role::User, &text) {
         tracing::warn!(error = %e, "could not record the user turn");
     }
     state.begin_generation();
     app.emit("chat:start", json!({ "text": text })).ok();
 
-    let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+    let (tx, mut rx) = mpsc::unbounded_channel::<Delta>();
     let handle = tokio::spawn(async move { provider.stream_chat(request, tx).await });
 
     let cancel = state.cancel.clone();
@@ -184,19 +203,28 @@ pub async fn send_message(
             handle.abort();
             break;
         }
-        for utterance in parser.feed(&delta) {
-            app.emit("chat:utterance", &utterance).ok();
+        match delta {
+            Delta::Thinking(chunk) => {
+                // Shown live in the thinking strip; never spoken, never parsed
+                // for emotion tags, never written to history.
+                app.emit("chat:thinking", json!({ "delta": chunk })).ok();
+            }
+            Delta::Text(chunk) => {
+                for utterance in parser.feed(&chunk) {
+                    app.emit("chat:utterance", &utterance).ok();
+                }
+                let visible = parser.visible_text();
+                app.emit("chat:delta", json!({ "delta": chunk, "visible": visible }))
+                    .ok();
+            }
         }
-        let visible = parser.visible_text();
-        app.emit("chat:delta", json!({ "delta": delta, "visible": visible }))
-            .ok();
     }
 
     if aborted {
         let (_, reply) = parser.finish();
         let plain = reply.plain_text();
         if !plain.is_empty() {
-            let _ = state.history.append_turn(Role::Assistant, &plain);
+            let _ = state.chats.append(&chat_id, Role::Assistant, &plain);
         }
         app.emit(
             "chat:cancelled",
@@ -224,13 +252,45 @@ pub async fn send_message(
     let (_, reply) = parser.finish();
     let plain = reply.plain_text();
     if !plain.is_empty() {
-        if let Err(e) = state.history.append_turn(Role::Assistant, &plain) {
+        if let Err(e) = state.chats.append(&chat_id, Role::Assistant, &plain) {
             tracing::warn!(error = %e, "could not record the assistant turn");
         }
     }
-    app.emit("chat:done", json!({ "text": plain, "reply": reply }))
-        .ok();
+    let context_tokens = state.chats.context(&chat_id, settings.llm.context_turns)
+        .iter()
+        .map(Message::approx_tokens)
+        .sum::<usize>()
+        + request_tokens
+        + plain.chars().count() / 4;
+
+    app.emit(
+        "chat:done",
+        json!({
+            "text": plain,
+            "reply": reply,
+            "context_tokens": context_tokens,
+            "context_window": settings.llm.context_window,
+        }),
+    )
+    .ok();
     Ok(())
+}
+
+#[tauri::command]
+pub fn list_skills(state: State<'_, AppState>) -> Vec<Skill> {
+    state.skills.list()
+}
+
+/// Create or update a skill. The id comes back sanitised — the UI should use
+/// the returned value, not the one it sent.
+#[tauri::command]
+pub fn save_skill(state: State<'_, AppState>, skill: Skill) -> Result<Skill, String> {
+    state.skills.save(&skill).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_skill(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    state.skills.delete(&id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -239,7 +299,42 @@ pub fn cancel_generation(state: State<'_, AppState>) {
 }
 
 #[tauri::command]
-pub fn clear_history(state: State<'_, AppState>) -> Result<(), String> {
+pub fn list_chats(state: State<'_, AppState>) -> Vec<ChatSummary> {
+    state.chats.list()
+}
+
+#[tauri::command]
+pub fn new_chat(state: State<'_, AppState>) -> Result<Chat, String> {
+    state.chats.create("New conversation").map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn load_chat(state: State<'_, AppState>, id: String) -> Option<Chat> {
+    state.chats.load(&id)
+}
+
+#[tauri::command]
+pub fn rename_chat(state: State<'_, AppState>, id: String, title: String) -> Result<(), String> {
+    state.chats.rename(&id, &title).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn pin_chat(state: State<'_, AppState>, id: String, pinned: bool) -> Result<(), String> {
+    state.chats.set_pinned(&id, pinned).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_chat(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    state.chats.delete(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn clear_history(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    state.chats.delete(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn legacy_clear_history(state: State<'_, AppState>) -> Result<(), String> {
     state.history.clear().map_err(|e| e.to_string())
 }
 

@@ -14,13 +14,17 @@
 //! [`History`] API is the seam where a SQLite backend can slot in later without
 //! touching callers.
 
+pub mod chat_store;
 pub mod history;
 pub mod paths;
 pub mod settings_store;
+pub mod skill_store;
 
+pub use chat_store::{Chat, ChatStore, ChatSummary, Turn};
 pub use history::{History, HistoryEntry};
 pub use paths::{data_dir, ensure_data_dir, history_path, settings_path};
 pub use settings_store::SettingsStore;
+pub use skill_store::SkillStore;
 
 /// Errors raised by the persistence layer.
 #[derive(Debug, thiserror::Error)]

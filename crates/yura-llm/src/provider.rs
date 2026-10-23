@@ -33,6 +33,17 @@ impl ChatRequest {
     }
 }
 
+/// One streamed piece of a reply.
+///
+/// Reasoning models emit their scratchpad separately from the answer; keeping
+/// the two channels distinct lets the UI show "thinking" without polluting the
+/// transcript or speaking it aloud.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Delta {
+    Text(String),
+    Thinking(String),
+}
+
 /// Every backend: stream tokens into `sink`, return when finished.
 ///
 /// Deltas are pushed as `String` because that is exactly what the UI needs to
@@ -46,11 +57,15 @@ pub trait LlmProvider: Send + Sync {
     fn verify_config(&self) -> Result<()>;
 
     /// Stream the reply. Returns `Ok(())` after the last delta.
-    async fn stream_chat(&self, req: ChatRequest, sink: mpsc::UnboundedSender<String>) -> Result<()>;
+    async fn stream_chat(&self, req: ChatRequest, sink: mpsc::UnboundedSender<Delta>) -> Result<()>;
 }
 
 /// Send a delta, ignoring the case where the consumer hung up (the user hit
 /// stop, or the window closed mid-sentence).
-pub(crate) fn emit(sink: &mpsc::UnboundedSender<String>, text: impl Into<String>) -> bool {
-    sink.send(text.into()).is_ok()
+pub(crate) fn emit(sink: &mpsc::UnboundedSender<Delta>, delta: Delta) -> bool {
+    sink.send(delta).is_ok()
+}
+
+pub(crate) fn emit_text(sink: &mpsc::UnboundedSender<Delta>, text: impl Into<String>) -> bool {
+    emit(sink, Delta::Text(text.into()))
 }

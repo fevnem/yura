@@ -5,7 +5,7 @@ use tokio::sync::mpsc;
 use yura_core::{Result, YuraError};
 
 use crate::http::client;
-use crate::provider::{emit, ChatRequest, LlmProvider};
+use crate::provider::{emit, emit_text, ChatRequest, Delta, LlmProvider};
 use crate::sse::SseBuffer;
 
 /// Anthropic Messages API (`POST {base}/messages`).
@@ -73,6 +73,18 @@ pub fn extract_delta(v: &Value) -> Option<&str> {
     }
 }
 
+/// Extended-thinking deltas arrive as `thinking_delta` inside the block event.
+pub fn extract_thinking(v: &Value) -> Option<&str> {
+    if v.get("type").and_then(Value::as_str) != Some("content_block_delta") {
+        return None;
+    }
+    let delta = v.get("delta")?;
+    match delta.get("type").and_then(Value::as_str) {
+        Some("thinking_delta") => delta.get("thinking").and_then(Value::as_str),
+        _ => None,
+    }
+}
+
 #[async_trait]
 impl LlmProvider for Anthropic {
     fn id(&self) -> &'static str {
@@ -92,7 +104,7 @@ impl LlmProvider for Anthropic {
     async fn stream_chat(
         &self,
         req: ChatRequest,
-        sink: mpsc::UnboundedSender<String>,
+        sink: mpsc::UnboundedSender<Delta>,
     ) -> Result<()> {
         self.verify_config()?;
 
@@ -141,8 +153,13 @@ impl LlmProvider for Anthropic {
                     Some("message_stop") => return Ok(()),
                     _ => {}
                 }
+                if let Some(thinking) = extract_thinking(&v) {
+                    if !emit(&sink, Delta::Thinking(thinking.to_owned())) {
+                        return Ok(());
+                    }
+                }
                 if let Some(delta) = extract_delta(&v) {
-                    if !emit(&sink, delta) {
+                    if !emit_text(&sink, delta) {
                         return Ok(());
                     }
                 }

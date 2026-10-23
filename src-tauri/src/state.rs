@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use yura_avatar::AvatarSpec;
 use yura_core::Settings;
-use yura_store::{history_path, settings_path, History, SettingsStore};
+use yura_store::{data_dir, history_path, settings_path, ChatStore, History, SettingsStore, SkillStore};
 
 /// Everything long-lived in the process.
 ///
@@ -14,6 +14,8 @@ pub struct AppState {
     pub settings: RwLock<Settings>,
     pub settings_store: SettingsStore,
     pub history: History,
+    pub skills: SkillStore,
+    pub chats: ChatStore,
     pub cancel: Arc<AtomicBool>,
     pub avatar: AvatarSpec,
 }
@@ -35,10 +37,25 @@ impl AppState {
             "settings loaded"
         );
 
+        let base = data_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+        let skills = SkillStore::new(&base);
+        let chats = ChatStore::new(&base);
+
+        // First run: give the user working examples instead of an empty page.
+        if skills.list().is_empty() {
+            for skill in yura_core::skill::defaults() {
+                if let Err(e) = skills.save(&skill) {
+                    tracing::warn!(error = %e, "could not install a starter skill");
+                }
+            }
+        }
+
         Self {
             settings: RwLock::new(settings),
             settings_store,
             history,
+            skills,
+            chats,
             cancel: Arc::new(AtomicBool::new(false)),
             avatar: yura_avatar::spec(),
         }

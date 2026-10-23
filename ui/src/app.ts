@@ -1,6 +1,8 @@
 import { invoke, on, windowAction } from './bridge/ipc';
 import type {
   Bootstrap,
+  Chat,
+  ChatSummary,
   ChatCancelEvent,
   ChatDeltaEvent,
   ChatDoneEvent,
@@ -8,7 +10,9 @@ import type {
   ChatStartEvent,
   Emotion,
   Settings,
+  ChatThinkingEvent,
   SettingsChangedEvent,
+  Skill,
   Utterance,
 } from './bridge/types';
 import { Avatar } from './avatar/avatar';
@@ -17,10 +21,12 @@ import { GazeController } from './avatar/gaze';
 import { IdleAnimator } from './avatar/idle';
 import { LipSync } from './avatar/lipsync';
 import { Composer } from './chat/composer';
+import { ChatSidebar } from './chat/sidebar';
 import { Transcript } from './chat/transcript';
 import { createLighting, type LightingHandle } from './scene/lights';
 import { Stage } from './scene/stage';
 import { SettingsPanel } from './settings/panel';
+import { Telemetry } from './telemetry/hud';
 import { applyPalette, store } from './state/store';
 import { MicrophoneMeter, PlatformTranscriber } from './voice/mic';
 import { SpeechController } from './voice/speech';
@@ -48,6 +54,12 @@ export class App {
   private composer!: Composer;
   private panel!: SettingsPanel;
   private bootstrap!: Bootstrap;
+  private telemetry!: Telemetry;
+  private skills: Skill[] = [];
+  private sidebar!: ChatSidebar;
+  private chats: ChatSummary[] = [];
+  private activeChatId: string | null = null;
+  private sidebarOpen = true;
 
   private beatQueue: Utterance[] = [];
   private draining = false;
@@ -116,7 +128,8 @@ export class App {
     });
 
     this.mountUi();
-    this.wireEvents();
+    await this.wireEvents();
+    await this.bootChats();
     this.registerTicks();
     this.stage.start();
 
@@ -161,9 +174,21 @@ export class App {
     const send = must<HTMLButtonElement>('#btn-send');
     const mic = must<HTMLButtonElement>('#btn-mic');
 
+    this.skills = this.bootstrap.skills ?? [];
+
+    this.telemetry = new Telemetry(
+      must<HTMLElement>('#telem-ctx'),
+      must<HTMLElement>('#telem-ctx .telem-bar b'),
+      must<HTMLElement>('#telem-ctx .telem-text'),
+      must<HTMLElement>('#telem-tps'),
+      must<HTMLElement>('#telem-tps .telem-text'),
+      must<HTMLElement>('#thinking'),
+      must<HTMLElement>('#thinking .thinking-text'),
+    );
+    this.telemetry.setContext(0, this.bootstrap.settings.llm.context_window);
+
     this.transcript = new Transcript(transcriptEl);
     this.transcript.setVisible(this.bootstrap.settings.ui.show_transcript);
-    this.transcript.load(this.bootstrap.history);
 
     this.composer = new Composer(form, input, send, mic, {
       onSend: (text) => void this.send(text),
@@ -182,6 +207,31 @@ export class App {
         await invoke('clear_history');
         this.transcript.clear();
       },
+      onTestVoice: (text, settings) => this.speakPreview(text, settings),
+      getSkills: () => this.skills,
+      onToggleSkill: async (id, enabled) => {
+        const skill = this.skills.find((s) => s.id === id);
+        if (!skill) return;
+        const saved = await invoke<Skill>('save_skill', { skill: { ...skill, enabled } });
+        this.skills = this.skills.map((s) => (s.id === id ? saved : s));
+      },
+      onSaveSkill: async (skill) => {
+        const saved = await invoke<Skill>('save_skill', { skill });
+        this.skills = [...this.skills.filter((s) => s.id !== saved.id), saved];
+        return saved;
+      },
+      onDeleteSkill: async (id) => {
+        await invoke('delete_skill', { id });
+        this.skills = this.skills.filter((s) => s.id !== id);
+      },
+      onImportSkill: async (file) => {
+        const text = await file.text();
+        const stem = file.name.replace(/\.(md|markdown|txt)$/i, '');
+        const saved = await invoke<Skill>('save_skill', {
+          skill: { id: stem, name: stem.replace(/[-_]+/g, ' '), description: '', body: text, enabled: true },
+        });
+        this.skills = [...this.skills.filter((s) => s.id !== saved.id), saved];
+      },
       onClose: () => undefined,
     });
 
@@ -190,11 +240,56 @@ export class App {
       must<HTMLButtonElement>('#btn-settings').classList.toggle('active', this.panel.isOpen);
     });
     must<HTMLButtonElement>('#btn-min').addEventListener('click', () => void windowAction('minimize'));
+    must<HTMLButtonElement>('#btn-max').addEventListener('click', () => void windowAction('toggle-maximize'));
+
+    // Double-clicking the drag region should maximise, like any real title bar.
+    const titlebar = document.querySelector('.titlebar');
+    titlebar?.addEventListener('dblclick', (event) => {
+      const target = event.target as HTMLElement;
+      if (target.closest('.win-actions')) return;
+      void windowAction('toggle-maximize');
+    });
     must<HTMLButtonElement>('#btn-close').addEventListener('click', () => void windowAction('close'));
     must<HTMLButtonElement>('#btn-pin').addEventListener('click', () => void this.togglePin());
     must<HTMLButtonElement>('#setup-open').addEventListener('click', () => {
       this.showSetup(false);
-      this.panel.open();
+      this.panel.show('model');
+    });
+
+    // Esc leaves the settings page, never the app.
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && this.panel.isOpen) {
+        event.preventDefault();
+        this.panel.close();
+        must<HTMLButtonElement>('#btn-settings').classList.remove('active');
+      }
+    });
+
+    this.sidebar = new ChatSidebar(must<HTMLElement>('#chats'), {
+      onSelect: (id) => void this.selectChat(id),
+      onNew: () => void this.newChat(),
+      onRename: (id, title) => {
+        void invoke('rename_chat', { id, title }).then(() => this.refreshChats());
+      },
+      onPin: (id, pinned) => {
+        void invoke('pin_chat', { id, pinned }).then(() => this.refreshChats());
+      },
+      onDelete: (id) => {
+        void invoke('delete_chat', { id }).then(async () => {
+          await this.refreshChats();
+          if (this.activeChatId === id) {
+            const next = this.chats[0];
+            if (next) await this.selectChat(next.id);
+            else await this.newChat();
+          }
+        });
+      },
+    });
+
+    must<HTMLButtonElement>('#btn-sidebar').addEventListener('click', () => {
+      this.sidebarOpen = !this.sidebarOpen;
+      must<HTMLElement>('#app').dataset.sidebar = this.sidebarOpen ? 'open' : 'closed';
+      must<HTMLButtonElement>('#btn-sidebar').classList.toggle('active', this.sidebarOpen);
     });
 
     if (!this.transcriber.available) {
@@ -217,10 +312,45 @@ export class App {
     });
   }
 
+  /* ── conversations ─────────────────────────────────────────── */
+
+  private async bootChats(): Promise<void> {
+    this.chats = (await invoke<ChatSummary[]>('list_chats')) ?? [];
+    if (this.chats.length === 0) {
+      const chat = await invoke<Chat>('new_chat');
+      this.chats = [{ id: chat.id, title: chat.title, pinned: false, updated: chat.updated, turns: 0, preview: '' }];
+      await this.selectChat(chat.id);
+      return;
+    }
+    await this.selectChat(this.chats[0].id);
+  }
+
+  private async refreshChats(): Promise<void> {
+    this.chats = (await invoke<ChatSummary[]>('list_chats')) ?? [];
+    this.sidebar?.setChats(this.chats, this.activeChatId);
+  }
+
+  private async selectChat(id: string): Promise<void> {
+    const chat = await invoke<Chat | null>('load_chat', { id });
+    this.activeChatId = id;
+    this.transcript.load((chat?.messages ?? []).map((m) => ({ role: m.role, content: m.content })));
+    this.sidebar?.setChats(this.chats, id);
+  }
+
+  private async newChat(): Promise<void> {
+    const chat = await invoke<Chat>('new_chat');
+    await this.refreshChats();
+    this.activeChatId = chat.id;
+    this.transcript.load([]);
+    this.sidebar?.setChats(this.chats, chat.id);
+    this.composer.focus();
+  }
+
   /* ── chat ──────────────────────────────────────────────────── */
 
   private async wireEvents(): Promise<void> {
     await on<ChatStartEvent>('chat:start', () => {
+      this.telemetry.startStreaming();
       store.patch({ streaming: true, draft: '' });
       this.composer.setStreaming(true);
       this.setEmotion('thinking');
@@ -228,7 +358,12 @@ export class App {
       this.setStatus('thinking');
     });
 
+    await on<ChatThinkingEvent>('chat:thinking', (payload) => {
+      this.telemetry.addThinking(payload.delta);
+    });
+
     await on<ChatDeltaEvent>('chat:delta', (payload) => {
+      this.telemetry.addText(payload.delta);
       store.set('draft', payload.visible);
       this.transcript.appendDelta(payload.visible);
       this.setStatus(null);
@@ -237,12 +372,18 @@ export class App {
     await on<Utterance>('chat:utterance', (utterance) => this.enqueueBeat(utterance));
 
     await on<ChatDoneEvent>('chat:done', (payload) => {
+      this.telemetry.finishStreaming();
+      if (payload.context_window) {
+        this.telemetry.setContext(payload.context_tokens ?? 0, payload.context_window);
+      }
       this.transcript.finishStreaming(payload.text, this.emotion.currentEmotion);
       store.patch({ streaming: false, draft: '' });
       this.composer.setStreaming(false);
+      void this.refreshChats();
     });
 
     await on<ChatCancelEvent>('chat:cancelled', (payload) => {
+      this.telemetry.cancel();
       this.transcript.finishStreaming(payload.text, this.emotion.currentEmotion);
       store.patch({ streaming: false });
       this.composer.setStreaming(false);
@@ -250,6 +391,7 @@ export class App {
     });
 
     await on<ChatErrorEvent>('chat:error', (payload) => {
+      this.telemetry.cancel();
       this.transcript.addError(payload.message);
       store.patch({ streaming: false, error: payload.message });
       this.composer.setStreaming(false);
@@ -275,8 +417,10 @@ export class App {
     this.transcript.beginStreaming();
     this.setStatus('thinking');
 
+    if (!this.activeChatId) await this.bootChats();
+
     try {
-      await invoke('send_message', { text });
+      await invoke('send_message', { chatId: this.activeChatId, text });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.transcript.addError(message);
@@ -349,6 +493,40 @@ export class App {
       this.avatar.setEnergy(0);
       this.lighting.setEnergy(0);
     }
+  }
+
+  /** Speak a sample with the *draft* settings, then restore the saved ones. */
+  private speakPreview(text: string, draft: Settings): void {
+    const saved = store.get('settings');
+    this.speech.configure({
+      enabled: true,
+      voiceUri: draft.voice.voice_uri,
+      locale: draft.voice.preferred_locale,
+      rate: draft.voice.rate,
+      pitch: draft.voice.pitch,
+      volume: draft.voice.volume,
+    });
+    this.speech.speak(text, {
+      onLevel: (level) => {
+        this.lipsync.setLevel(level);
+        this.stage.setEnergy(level);
+        this.lighting.setEnergy(level);
+      },
+      onBoundary: () => this.lipsync.accent(),
+      onEnd: () => {
+        this.lipsync.stop();
+        if (saved) {
+          this.speech.configure({
+            enabled: saved.voice.enabled,
+            voiceUri: saved.voice.voice_uri,
+            locale: saved.voice.preferred_locale,
+            rate: saved.voice.rate,
+            pitch: saved.voice.pitch,
+            volume: saved.voice.volume,
+          });
+        }
+      },
+    });
   }
 
   private setEmotion(emotion: Emotion): void {

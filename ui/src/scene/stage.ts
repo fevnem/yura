@@ -36,6 +36,7 @@ export class Stage {
   private running = false;
 
   private pointer = new THREE.Vector2(0, 0);
+  private observer: ResizeObserver | null = null;
   private cameraHome = new THREE.Vector3(0, 1.34, 3.15);
   private energy = 0;
 
@@ -49,7 +50,7 @@ export class Stage {
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.06;
+    this.renderer.toneMappingExposure = 0.94;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setClearColor(0x000000, 0);
 
@@ -72,6 +73,10 @@ export class Stage {
     this.resize();
     window.addEventListener('resize', this.resize);
     window.addEventListener('pointermove', this.onPointerMove);
+
+    // The conversation rail changes the canvas width without a window resize.
+    this.observer = new ResizeObserver(() => this.resize());
+    this.observer.observe(canvas);
   }
 
   /** Register a per-frame callback. Order of registration is update order. */
@@ -110,6 +115,7 @@ export class Stage {
     this.stop();
     window.removeEventListener('resize', this.resize);
     window.removeEventListener('pointermove', this.onPointerMove);
+    this.observer?.disconnect();
     this.backdrop.dispose();
     this.particles.dispose();
     this.postfx.dispose();
@@ -143,15 +149,16 @@ export class Stage {
   }
 
   private onPointerMove = (event: PointerEvent): void => {
-    this.pointer.set(
-      (event.clientX / window.innerWidth) * 2 - 1,
-      -((event.clientY / window.innerHeight) * 2 - 1),
-    );
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / Math.max(1, rect.width);
+    const y = (event.clientY - rect.top) / Math.max(1, rect.height);
+    this.pointer.set(x * 2 - 1, -(y * 2 - 1));
   };
 
   private resize = (): void => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    const canvas = this.renderer.domElement;
+    const width = Math.max(1, canvas.clientWidth);
+    const height = Math.max(1, canvas.clientHeight);
     const dpr = Math.min(window.devicePixelRatio, 2);
 
     this.renderer.setPixelRatio(dpr);

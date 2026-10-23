@@ -7,12 +7,12 @@
     <title>Yura</title>
   </head>
   <body>
-    <div id="app">
-      <canvas id="stage" aria-hidden="true"></canvas>
-      <div class="scrim" aria-hidden="true"></div>
-
+    <div id="app" data-sidebar="open">
       <header class="titlebar" data-tauri-drag-region>
         <div class="brand" data-tauri-drag-region>
+          <button id="btn-sidebar" class="win-btn rail-toggle" type="button" title="Conversations" aria-label="Toggle conversations">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.2" y="3" width="11.6" height="10" rx="1.8"/><path d="M6.4 3v10"/></svg>
+          </button>
           <span class="brand-glyph" aria-hidden="true"></span>
           <span class="brand-name">Yura</span>
           <span class="brand-dot" id="status-dot" aria-hidden="true"></span>
@@ -27,49 +27,75 @@
           <button id="btn-min" class="win-btn" type="button" title="Minimise" aria-label="Minimise">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9"/></svg>
           </button>
+          <button id="btn-max" class="win-btn" type="button" title="Maximise" aria-label="Maximise">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.6" y="3.6" width="8.8" height="8.8" rx="1.6"/></svg>
+          </button>
           <button id="btn-close" class="win-btn danger" type="button" title="Close" aria-label="Close">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
           </button>
         </div>
       </header>
 
-      <aside id="transcript" class="transcript" aria-live="polite" aria-label="Conversation"></aside>
+      <aside id="chats" class="chats" aria-label="Conversations"></aside>
 
-      <div id="status" class="status" role="status"></div>
+      <main class="stagewrap">
+        <canvas id="stage" aria-hidden="true"></canvas>
+        <div class="scrim" aria-hidden="true"></div>
 
-      <section id="setup" class="setup" hidden>
-        <p class="setup-kicker">Almost there</p>
-        <h2 class="setup-title">Give Yura a mind</h2>
-        <p class="setup-body">
-          Add a provider and a model in Settings. Local servers (Ollama, LM Studio)
-          work with no key — everything else needs an API key.
-        </p>
-        <button id="setup-open" class="primary" type="button">Open settings</button>
-      </section>
+        <aside id="transcript" class="transcript" aria-live="polite" aria-label="Conversation"></aside>
 
-      <footer class="dock">
-        <form id="composer" class="composer" autocomplete="off">
-          <button id="btn-mic" class="pill-btn" type="button" title="Hold to talk" aria-label="Hold to talk">
-            <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="6" y="2" width="4" height="7" rx="2"/><path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.2"/></svg>
-          </button>
-          <textarea
-            id="input"
-            rows="1"
-            placeholder="say something to Yura…"
-            aria-label="Message"
-            spellcheck="false"
-          ></textarea>
-          <button id="btn-send" class="send" type="submit" title="Send" aria-label="Send">
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8h9M8 3.5 12.5 8 8 12.5"/></svg>
-          </button>
-        </form>
-        <p class="dock-hint">
-          <kbd>enter</kbd> to send · <kbd>shift</kbd>+<kbd>enter</kbd> for a new line ·
-          <kbd>hold</kbd> the mic to talk
-        </p>
-      </footer>
+        <div id="status" class="status" role="status"></div>
 
-      <section id="settings" class="drawer" hidden aria-label="Settings"></section>
+        <div id="thinking" class="thinking" hidden>
+          <span class="thinking-label">thinking</span>
+          <span class="thinking-text"></span>
+        </div>
+
+        <div class="telemetry">
+          <span class="telem" id="telem-ctx" title="context window used">
+            <i class="telem-bar"><b></b></i>
+            <span class="telem-text">—</span>
+          </span>
+          <span class="telem" id="telem-tps" hidden title="streaming speed">
+            <span class="telem-dot"></span>
+            <span class="telem-text">0 tok/s</span>
+          </span>
+        </div>
+
+        <section id="setup" class="setup" hidden>
+          <p class="setup-kicker">Almost there</p>
+          <h2 class="setup-title">Give Yura a mind</h2>
+          <p class="setup-body">
+            Add a provider and a model in Settings. Local servers (Ollama, LM Studio)
+            work with no key — everything else needs an API key.
+          </p>
+          <button id="setup-open" class="primary" type="button">Open settings</button>
+        </section>
+
+        <footer class="dock">
+          <form id="composer" class="composer" autocomplete="off">
+            <button id="btn-mic" class="pill-btn" type="button" title="Hold to talk" aria-label="Hold to talk">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="6" y="2" width="4" height="7" rx="2"/><path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.2"/></svg>
+            </button>
+            <textarea
+              id="input"
+              rows="1"
+              placeholder="ask her about what you're studying…"
+              aria-label="Message"
+              spellcheck="false"
+            ></textarea>
+            <button id="btn-send" class="send" type="submit" title="Send" aria-label="Send">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8h9M8 3.5 12.5 8 8 12.5"/></svg>
+            </button>
+          </form>
+          <p class="dock-hint">
+            <kbd>enter</kbd> to send · <kbd>shift</kbd>+<kbd>enter</kbd> for a new line ·
+            <kbd>hold</kbd> the mic to talk
+          </p>
+        </footer>
+      </main>
+
+      <section id="settings" class="panel" hidden aria-label="Settings"></section>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -20,6 +20,9 @@
   /* ink */
   --ink: #06050a;
   --ink-raised: #0c0a12;
+  /* the two washes that make the room; themes override these, not the accent */
+  --room-a: hsl(var(--hue) 40% 12% / 0.5);
+  --room-b: hsl(263 50% 10% / 0.55);
   --text: rgb(245 240 250 / 0.95);
   --text-dim: rgb(245 240 250 / 0.62);
   --text-faint: rgb(245 240 250 / 0.42);
@@ -63,4 +66,41 @@
     --t-med: 0ms;
     --t-slow: 0ms;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Themes
+   Each one is a room, not a filter: the ink, the two washes and the
+   default accent change together. The accent slider still wins,
+   because it writes --hue inline.
+   ────────────────────────────────────────────────────────────── */
+
+[data-theme='midnight'] {
+  --ink: #06050a;
+  --room-a: hsl(var(--hue) 40% 12% / 0.5);
+  --room-b: hsl(263 50% 10% / 0.55);
+}
+
+[data-theme='dusk'] {
+  --ink: #05070f;
+  --room-a: hsl(212 48% 15% / 0.55);
+  --room-b: hsl(236 52% 11% / 0.6);
+}
+
+[data-theme='ember'] {
+  --ink: #0b0705;
+  --room-a: hsl(24 52% 15% / 0.55);
+  --room-b: hsl(8 46% 9% / 0.6);
+}
+
+[data-theme='orchid'] {
+  --ink: #0a0612;
+  --room-a: hsl(288 46% 16% / 0.55);
+  --room-b: hsl(322 46% 10% / 0.6);
+}
+
+[data-theme='mono'] {
+  --ink: #0a0a0b;
+  --room-a: hsl(0 0% 15% / 0.5);
+  --room-b: hsl(0 0% 8% / 0.6);
 }
