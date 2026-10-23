@@ -9,7 +9,7 @@
 [![platform: Windows 10 | 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-ffb3c1?style=flat-square&labelColor=140f18)](#install)
 [![installer: 2.1 MB](https://img.shields.io/badge/installer-2.1%20MB-ffb3c1?style=flat-square&labelColor=140f18)](#install)
 [![runtime: WebView2](https://img.shields.io/badge/runtime-WebView2-e9e2d0?style=flat-square&labelColor=140f18)](#install)
-[![tests: 99 passing](https://img.shields.io/badge/tests-55%20passing-e9e2d0?style=flat-square&labelColor=140f18)](#build-from-source)
+[![tests: 104 passing](https://img.shields.io/badge/tests-55%20passing-e9e2d0?style=flat-square&labelColor=140f18)](#build-from-source)
 [![license: MIT](https://img.shields.io/badge/license-MIT-e9e2d0?style=flat-square&labelColor=140f18)](LICENSE)
 
 <img src="docs/screens/01-landing.jpg" alt="Yura's landing screen: a greeting, four study doors in, and the character standing to the right" width="880">
@@ -78,6 +78,17 @@ why it works with every provider, including local models with no tool-calling AP
 
 She can also set timers, keep a task list, and send a notification through the
 same gate. Timers survive the window being closed and fire exactly once.
+
+## MCP servers
+
+Settings → **MCP** adds a Model Context Protocol server — name, command,
+arguments. Connect it and its tools appear in her hands: she calls
+`list_mcp_tools` to see what is on offer, then `call_mcp`, and the arguments are
+shown to you before anything runs.
+
+The client is stdio JSON-RPC only, on purpose: that covers the servers people
+actually use (`npx @modelcontextprotocol/...`, `uvx ...`) without pretending to
+implement transports nobody asked for.
 
 ## Live readout
 
@@ -152,7 +163,7 @@ npm install                     # task runner + Tauri CLI
 npm --prefix ui install         # renderer
 
 npm run tauri:dev               # hot-reloading dev window
-npm test                        # 99 unit tests across the crates
+npm test                        # 104 unit tests across the crates
 npm run build:windows           # NSIS installer, cross-compiled
 ```
 
@@ -169,6 +180,7 @@ crates/yura-core      persona · emotions · messages · skills · reply parser
 crates/yura-llm       LlmProvider trait · OpenAI-compatible · Anthropic · deltas
 crates/yura-tools     sandboxed workspace · python runner · timers · tasks
 crates/yura-docs      PDF text · magic-byte sniffing · prompt blocks
+crates/yura-mcp       stdio JSON-RPC client · tools only
 crates/yura-avatar    emotion → VRM expression weights · viseme tables
 crates/yura-store     chats · settings · skills · atomic writes
 src-tauri             the window: commands, event streaming, cancellation
@@ -187,9 +199,9 @@ if those tables drift apart.
 
 ## Roadmap
 
-Shipped in 0.3: abilities with the approve/deny gate, the library folder,
-downloadable voice resources and tray/start-on-login. Next is **MCP servers**,
-then wiring the microphone to Whisper.
+Shipped in 0.4: MCP servers, abilities with the approve/deny gate, the library
+folder, downloadable voice resources and tray/start-on-login. Next is wiring the
+microphone to the Whisper resource.
 
 The design for each is written down in [docs/plan-0.3.md](docs/plan-0.3.md).
 
