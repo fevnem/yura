@@ -4914,7 +4914,7 @@ dependencies = [
 
 [[package]]
 name = "yura"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4931,7 +4931,7 @@ dependencies = [
 
 [[package]]
 name = "yura-avatar"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4940,7 +4940,7 @@ dependencies = [
 
 [[package]]
 name = "yura-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4949,7 +4949,7 @@ dependencies = [
 
 [[package]]
 name = "yura-llm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -4963,7 +4963,7 @@ dependencies = [
 
 [[package]]
 name = "yura-store"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "dirs 5.0.1",
  "serde",

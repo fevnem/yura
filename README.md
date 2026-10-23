@@ -4,60 +4,85 @@
 
 # Yura
 
-*<sub>a quiet light that stays</sub>*
+*<sub>a study companion who stays</sub>*
 
 [![platform: Windows 10 | 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-ffb3c1?style=flat-square&labelColor=140f18)](#install)
-[![installer: 2.0 MB](https://img.shields.io/badge/installer-2.0%20MB-ffb3c1?style=flat-square&labelColor=140f18)](#install)
+[![installer: 2.1 MB](https://img.shields.io/badge/installer-2.1%20MB-ffb3c1?style=flat-square&labelColor=140f18)](#install)
 [![runtime: WebView2](https://img.shields.io/badge/runtime-WebView2-e9e2d0?style=flat-square&labelColor=140f18)](#install)
-[![tests: 45 passing](https://img.shields.io/badge/tests-45%20passing-e9e2d0?style=flat-square&labelColor=140f18)](#build-from-source)
+[![tests: 55 passing](https://img.shields.io/badge/tests-55%20passing-e9e2d0?style=flat-square&labelColor=140f18)](#build-from-source)
 [![license: MIT](https://img.shields.io/badge/license-MIT-e9e2d0?style=flat-square&labelColor=140f18)](LICENSE)
 
-<img src="docs/screens/01-hero.jpg" alt="Yura's window: a glowing character on the left, the conversation on the right, the composer at the bottom" width="880">
+<img src="docs/screens/01-landing.jpg" alt="Yura's landing screen: a greeting, four study doors in, and the character standing to the right" width="880">
 
 </div>
 
-A lightweight AI companion for Windows. Not a chat window with a face bolted on —
-a character who lives in the corner of your screen, breathes, blinks, looks at you
-when you move the mouse, and speaks the words as they arrive.
+A study and research companion for Windows. Not a chatbot with a face bolted on —
+a character who sits beside you while you read, revise and write, keeps every
+conversation separate, and remembers what you are working on.
 
-## What this is
+She ships with **no model weights**: you point her at a provider, or at Ollama on
+localhost, and she comes alive. Everything else — your chats, your skills, your
+settings — stays in `%APPDATA%\Yura` as plain files.
 
-Yura is a desktop companion built as a **Tauri 2 app**: a Rust process that owns
-the window, the model connection, the voice and your data, with a three.js
-renderer for the character. There is no Electron, no bundled browser engine, and
-no server of ours anywhere in the loop. The installer is two megabytes because it
-uses the WebView2 runtime your Windows 11 machine already has.
+## What she is for
 
-She ships with **no model weights and no avatar**. You point her at a provider —
-an API key, or Ollama running on localhost — and you give her a body by dropping a
-`.vrm` file in. That is deliberate: it keeps the download small, the licence
-clean, and your conversations on your own machine.
+- **Explain it, then test it.** Ask for the shortest true explanation, then ask
+  her to quiz you on it. The *Socratic tutor* skill makes her teach by question
+  instead of lecture.
+- **Digest what you are reading.** Paste an abstract or a page; the *Paper digest*
+  skill returns the claim, the method, what the evidence supports, and the
+  strongest objection.
+- **Recall drills.** *Recall drill* quizzes only from material you have already
+  covered in that conversation, one question at a time, with a running score.
+- **Keep the thread.** Every conversation is its own file: pin the ones you are
+  mid-way through, rename them, delete them. She never mixes two subjects.
 
-Nothing is sent anywhere except the endpoint you configure. There is no
-telemetry, no account, no analytics.
+## Skills — teach her how you work
 
-## What she does
+A skill is a markdown file with instructions. Write one in **Settings → Skills**,
+or drop any `.md` you already have into `%APPDATA%\Yura\skills\`:
 
-- **A real 3D character.** Loads any VRM 0.x or 1.0 model. Breathing, blinks with
-  a natural jitter, eyes that track your cursor, a head that follows at a fraction
-  of the gaze angle so she never looks like a security camera.
-- **Speaks while she thinks.** Replies stream token by token, and the model tags
-  each beat with an emotion — `[joy]`, `[shy]`, `[sleepy]` — so her face changes
-  mid-sentence. The first sentence is spoken while the second is still being
-  written.
-- **Talks out loud, offline.** Speech goes through the Windows engine, so the
-  voices are already installed. Pitch and rate are tunable; the default is
-  nudged bright.
-- **Lip-syncs to her own voice.** No phoneme data is available from the platform
-  engine, so the mouth runs on a shaped loudness envelope driven by word
-  boundaries — fast to open, slow to close, different shapes for loud and quiet
-  syllables.
-- **Any mind you like.** OpenAI, Anthropic, DeepSeek, OpenRouter, Groq, Mistral,
-  Together, xAI, Ollama, LM Studio, or any OpenAI-compatible base URL. The
-  provider, endpoint, key and model all live in Settings.
-- **Remembers, locally.** Settings and history are readable JSON in
-  `%APPDATA%\Yura`. A corrupt config is moved aside, never a reason to fail to
-  launch.
+```markdown
+---
+name: Paper digest
+description: Summarise a paper as claims, method, evidence, limits.
+enabled: true
+---
+
+When the user shares a paper, answer in this order:
+1. The claim, in one sentence.
+2. Method, three bullets maximum.
+3. What the evidence actually supports.
+4. The strongest objection a reviewer would raise.
+```
+
+Enabled skills are compiled into her system prompt on every request. Toggle one
+off and it stops applying immediately — nothing is deleted, and nothing needs a
+restart. Three starter skills are installed on first run.
+
+## Live readout
+
+Under the conversation, always visible while she works:
+
+- **Context** — tokens used against the model's window, with a bar that warns at
+  60% and turns red at 85%. You can see a long PDF eating your memory before it
+  does.
+- **Tokens per second** — measured over a sliding window, so a local model
+  crawling at 4 tok/s looks like what it is.
+- **Thinking** — if the model exposes a reasoning stream (DeepSeek-R1, QwQ,
+  Claude extended thinking), her scratchpad appears as it arrives. Never spoken,
+  never saved.
+
+## The character
+
+Ships with **Sendagaya Shino** — the VRM Consortium's own sample model, CC0,
+bundled and attributed. She breathes, blinks with a natural jitter, tracks your
+cursor with her eyes and a fraction of her head, changes expression mid-sentence
+from the emotion tags in her replies, and stands on a floor with a contact shadow
+rather than floating in a void.
+
+Any VRM 0.x or 1.0 file works: drop it in `ui/public/assets/models/` and pick it
+in Settings → Avatar. With no model at all she appears as a designed spirit form.
 
 ## Install
 
@@ -65,64 +90,38 @@ Download from [**Releases**](https://github.com/fevnem/yura/releases/latest):
 
 | Build | File | What it does |
 |---|---|---|
-| Installer | `Yura_0.1.0_x64-setup.exe` | Per-user install, Start-menu entry, uninstaller. 2.0 MB. |
-| Portable | `Yura_0.1.0_portable_x64.zip` | Unzip anywhere and run `yura.exe`. No install, no registry. |
+| Installer | `Yura_0.2.0_x64-setup.exe` | Per-user install, Start-menu entry, uninstaller. 2.1 MB. |
+| Portable | `Yura_0.2.0_portable_x64.zip` | Unzip anywhere and run `yura.exe`. No install, no registry. |
 
-Both need **WebView2**, which ships with Windows 11 and with current Windows 10.
-If it is somehow missing, install the
-[Evergreen runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
-once.
+Both need **WebView2**, which ships with Windows 11 and current Windows 10.
+The builds are unsigned, so SmartScreen warns once — *More info → Run anyway*.
 
-The builds are unsigned, so SmartScreen will say "Windows protected your PC" the
-first time. *More info → Run anyway.* Signing needs a paid certificate; the
-roadmap says so too.
-
-Your data lives in `%APPDATA%\Yura\`:
+Your data, all in `%APPDATA%\Yura\`:
 
 ```
-settings.json    provider, key, persona, voice, avatar, theme
-history.jsonl    one turn per line, append-only
+settings.json      provider, key, persona, voice, avatar, theme
+chats/*.json       one file per conversation
+skills/*.md        your skills
 ```
 
 Delete that folder and Yura forgets everything.
 
-## Give her a body
+## Any mind you like
 
-The installer contains no avatar — every free VRM forbids redistribution, so
-bundling one would be a licence violation, not a shortcut I skipped.
-
-```bash
-npm run avatar:fetch            # downloads a sample to ui/public/assets/models/
-```
-
-Or drop any `.vrm` you have the rights to into `ui/public/assets/models/` and pick
-it in **Settings → Avatar**. Without one she appears as a designed spirit form —
-a small light with orbiting rings — which is a body, not a placeholder.
-
-## Point her at a mind
-
-| Provider | Endpoint | Key |
-|---|---|---|
-| OpenAI | `https://api.openai.com/v1` | required |
-| Anthropic | `https://api.anthropic.com/v1` | required |
-| DeepSeek | `https://api.deepseek.com/v1` | required |
-| OpenRouter · Groq · Mistral · Together · xAI | their `/v1` | required |
-| Ollama | `http://localhost:11434/v1` | none |
-| LM Studio | `http://localhost:1234/v1` | none |
-| Custom | anything OpenAI-shaped | optional |
+OpenAI · Anthropic · DeepSeek · OpenRouter · Groq · Mistral · Together · xAI ·
+Ollama · LM Studio · any OpenAI-compatible base URL. Provider, endpoint, key,
+model, temperature, reply length and memory depth all live in Settings, and the
+key never enters the webview.
 
 A companion workload wants short turns and a fast first token, not a reasoning
-model. Keep `max_tokens` around 300–500; a companion who monologues is worse
-company than one who stops and asks. Details in
+model — keep `max_tokens` around 300–500. Details in
 [docs/providers.md](docs/providers.md).
 
 ## Screenshots
 
-| The conversation | Settings |
+| A conversation | Settings |
 | --- | --- |
-| ![A reply arriving, the character's face already changed](docs/screens/02-conversation.jpg) | ![Provider, endpoint, key, model and persona in one drawer](docs/screens/03-settings.jpg) |
-
-<p align="center"><img src="docs/screens/04-detail.jpg" width="420" alt="Detail: emotion labels above each reply"></p>
+| ![A reply arriving, her face already changed](docs/screens/02-conversation.jpg) | ![Categories that open underneath themselves](docs/screens/03-settings.jpg) |
 
 ## Build from source
 
@@ -134,51 +133,46 @@ npm install                     # task runner + Tauri CLI
 npm --prefix ui install         # renderer
 
 npm run tauri:dev               # hot-reloading dev window
+npm test                        # 55 unit tests across the crates
 npm run build:windows           # NSIS installer, cross-compiled
-npm test                        # 45 unit tests across the four crates
 ```
 
 Cross-compiling on Linux also needs `lld llvm clang nsis`, the
 `x86_64-pc-windows-msvc` target, and `cargo install --locked cargo-xwin`. The
 gotchas — the pre-build hook's working directory, where artifacts actually land,
 why MSI needs a Windows host — are written down in
-[the skill](docs/architecture.md#cross-compiling) so the next person does not
-lose an evening to them.
+[docs/architecture.md](docs/architecture.md#cross-compiling).
 
 ## How it is put together
 
 ```
-crates/yura-core      persona · emotions · messages · streaming reply parser
-crates/yura-llm       LlmProvider trait · OpenAI-compatible · Anthropic
+crates/yura-core      persona · emotions · messages · skills · reply parser
+crates/yura-llm       LlmProvider trait · OpenAI-compatible · Anthropic · deltas
 crates/yura-avatar    emotion → VRM expression weights · viseme tables
-crates/yura-store     atomic settings.json · append-only history.jsonl
-src-tauri             the window: 8 commands, event-based token streaming
-ui/src/scene          renderer, lighting, shaders, bloom/grain/vignette
+crates/yura-store     chats · settings · skills · atomic writes
+src-tauri             the window: commands, event streaming, cancellation
+ui/src/scene          renderer, floor, contact shadow, bloom/grain/vignette
 ui/src/avatar         VRM rig · emotion mixer · idle · gaze · lip-sync
-ui/src/chat           transcript · composer
-ui/src/voice          speech out · microphone in
-ui/src/settings       the settings drawer
+ui/src/chat           conversation rail · transcript · composer · landing
+ui/src/settings       the settings page (categories → rows)
+ui/src/telemetry      context meter · tokens/s · thinking strip
 ```
 
 Three rules hold it together: **nothing in `crates/` knows Tauri exists**,
 **nothing in `ui/src/scene` knows what a message is**, and **the API key never
 enters the webview**. Adding a provider is one row in `PRESETS`; adding an
 emotion is one enum variant, one expression row and one hue — and the tests fail
-if those three tables drift apart.
-
-Full reasoning, including why emotions are a parseable protocol rather than a
-prompt trick, is in [docs/architecture.md](docs/architecture.md).
+if those tables drift apart.
 
 ## Roadmap
 
-Voice is the next real step: a bundled **Kokoro-82M** voice (86 MB, offline,
-genuinely cute) and **Whisper** for speech-to-text, which today is honestly
-unavailable inside WebView2. After that: animation clips for greet/listen/think,
-per-character personas, and a corner-sized always-on-top mode.
+Next: **attachments** (PDF and image drop-in), **abilities** (Python with an
+approve/deny gate), a **library** folder she can read and write, downloadable
+voice resources (MOSS-TTS-Nano, Kokoro, Whisper) and MCP servers.
 
-[`docs/roadmap.md`](docs/roadmap.md)
+The design for each is written down in [docs/plan-0.3.md](docs/plan-0.3.md).
 
 ## Licence
 
-MIT for the code — see [LICENSE](LICENSE). Avatar models and voice data are not
-covered by it and are never bundled; see [ATTRIBUTION.md](ATTRIBUTION.md).
+MIT for the code — see [LICENSE](LICENSE). The bundled avatar is CC0 and
+attributed in [ATTRIBUTION.md](ATTRIBUTION.md); no voice models are bundled.

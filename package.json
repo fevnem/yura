@@ -1,7 +1,7 @@
 {
   "name": "yura",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Yura — an offline-first AI companion with a 3D face.",
   "license": "MIT",
   "scripts": {
