@@ -28,6 +28,7 @@ type SectionId =
   | 'abilities'
   | 'library'
   | 'resources'
+  | 'mcp'
   | 'general'
   | 'appearance'
   | 'window';
@@ -102,6 +103,12 @@ const SECTIONS: SectionMeta[] = [
     label: 'Resources',
     summary: 'Downloadable voices and models — nothing is bundled',
     icon: '<path d="M8 2.6v7.2M5.2 7.2 8 10l2.8-2.8"/><path d="M3 11.6v1.2a.8.8 0 0 0 .8.8h8.4a.8.8 0 0 0 .8-.8v-1.2"/>',
+  },
+  {
+    id: 'mcp',
+    label: 'MCP',
+    summary: 'Connect Model Context Protocol servers and their tools',
+    icon: '<rect x="2.6" y="2.6" width="4.6" height="4.6" rx="1"/><rect x="8.8" y="8.8" width="4.6" height="4.6" rx="1"/><path d="M5 7.2v2.4a1.6 1.6 0 0 0 1.6 1.6h2.2"/>',
   },
   {
     id: 'general',
@@ -780,6 +787,101 @@ export class SettingsPanel {
 
         wrap.append(grid, el('p', 'row-help', 'Nothing is bundled with the installer. Downloads land in %APPDATA%\\Yura\\resources.'));
         return [this.row('Voice and speech models', 'Optional. The Windows voices work with nothing downloaded.', { kind: 'custom', node: wrap })];
+      }
+
+      case 'mcp': {
+        const invokeLater = async (cmd: string, args?: Record<string, unknown>) => {
+          const { invoke } = await import('@tauri-apps/api/core');
+          return invoke(cmd, args);
+        };
+
+        const list = el('div', 'pack-grid');
+        const status = el('p', 'row-help', '');
+
+        const refresh = async () => {
+          list.replaceChildren();
+          try {
+            const servers = await invokeLater('mcp_servers') as {
+              id: string; command: string; args: string[]; connected: boolean; tools: number;
+            }[];
+            if (servers.length === 0) {
+              list.append(el('p', 'row-help', 'No servers yet. Add one below.'));
+            }
+            for (const server of servers) {
+              const row = document.createElement('div');
+              row.className = 'pack';
+              row.append(el('span', 'pack-name', server.id));
+              row.append(el('span', 'pack-meta', `${server.command} ${server.args.join(' ')}`));
+              row.append(el('span', 'pack-state', server.connected ? `${server.tools} tools` : 'not connected'));
+
+              const action = el('button', 'btn-ghost', server.connected ? 'Disconnect' : 'Connect') as HTMLButtonElement;
+              action.type = 'button';
+              action.addEventListener('click', async () => {
+                action.disabled = true;
+                try {
+                  if (server.connected) await invokeLater('mcp_disconnect', { id: server.id });
+                  else await invokeLater('mcp_connect', { id: server.id });
+                } catch (error) {
+                  status.textContent = String(error).slice(0, 120);
+                }
+                action.disabled = false;
+                await refresh();
+              });
+
+              const drop = el('button', 'btn-ghost', 'Remove') as HTMLButtonElement;
+              drop.type = 'button';
+              drop.addEventListener('click', async () => {
+                await invokeLater('mcp_remove_server', { id: server.id });
+                await refresh();
+              });
+
+              const side = el('div', 'row-inline');
+              side.append(action, drop);
+              row.append(side);
+              list.append(row);
+            }
+          } catch (error) {
+            list.append(el('p', 'row-help', String(error)));
+          }
+        };
+        void refresh();
+
+        const form = el('div', 'row-inline');
+        const name = document.createElement('input');
+        name.className = 'input';
+        name.placeholder = 'name (e.g. files)';
+        const command = document.createElement('input');
+        command.className = 'input';
+        command.placeholder = 'command (e.g. npx)';
+        const argsField = document.createElement('input');
+        argsField.className = 'input';
+        argsField.placeholder = 'args, space separated';
+        const add = el('button', 'btn-ghost', 'Add server') as HTMLButtonElement;
+        add.type = 'button';
+        add.addEventListener('click', async () => {
+          const args = argsField.value.trim() ? argsField.value.trim().split(/\s+/) : [];
+          try {
+            await invokeLater('mcp_add_server', { id: name.value.trim(), command: command.value.trim(), args });
+            name.value = '';
+            command.value = '';
+            argsField.value = '';
+            status.textContent = 'Added. Press Connect to start it.';
+            await refresh();
+          } catch (error) {
+            status.textContent = String(error).slice(0, 120);
+          }
+        });
+        form.append(name, command, argsField, add);
+
+        return [
+          this.row('Servers', 'Each server is a child process speaking JSON-RPC over stdio.', { kind: 'custom', node: list }),
+          this.row('Add a server', 'Example: npx · -y @modelcontextprotocol/server-filesystem /path', { kind: 'custom', node: form }),
+          this.row('Status', '', { kind: 'custom', node: status }),
+          this.row('How she uses them', 'She asks for the tool list first; every call shows you the arguments before it runs.', {
+            kind: 'custom',
+            node: el('p', 'row-help', 'Connect a server, then ask her what tools it has.'),
+          }),
+        ];
       }
 
       case 'general':

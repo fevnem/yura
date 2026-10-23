@@ -5913,6 +5913,7 @@ dependencies = [
  "yura-core",
  "yura-docs",
  "yura-llm",
+ "yura-mcp",
  "yura-store",
  "yura-tools",
 ]
@@ -5958,6 +5959,16 @@ dependencies = [
  "tokio",
  "tracing",
  "yura-core",
+]
+
+[[package]]
+name = "yura-mcp"
+version = "0.3.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]

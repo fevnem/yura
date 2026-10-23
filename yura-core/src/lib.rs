@@ -24,7 +24,7 @@ pub use message::{Message, Role};
 pub use persona::Persona;
 pub use reply::{parse, Reply, ReplyParser, Utterance};
 pub use skill::Skill;
-pub use settings::{
+pub use settings::{Abilities, General, 
     preset, AvatarSettings, LlmSettings, ProviderKind, ProviderPreset, Settings, UiSettings,
     VoiceSettings, PRESETS, SETTINGS_VERSION,
 };

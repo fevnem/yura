@@ -3,6 +3,26 @@
 All notable changes to Yura. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [SemVer](https://semver.org/).
 
+## [0.4.0] — 2026-10-23
+
+### Added — MCP servers
+
+- **Settings → MCP.** Add a server by name, command and arguments; connect it and
+  the tool count appears. Servers are child processes speaking newline-delimited
+  JSON-RPC on stdio — the protocol as it actually is, no SDK.
+- **`list_mcp_tools` and `call_mcp`** join the agent protocol, so she can discover
+  what a server offers and use it. Every MCP call goes through the same
+  approve/deny card as Python, showing the exact arguments.
+- Connections are owned by the app, not the settings page: switching sections or
+  chats does not drop them, and removing a server kills its process.
+- A server that fails to start, dies mid-handshake, or answers with an error is
+  reported in plain words instead of hanging the UI.
+
+### Not included
+
+- HTTP/SSE transports, MCP resources and prompts. Tools over stdio is the part
+  that makes an agent useful; the rest is designed in `docs/plan-0.3.md`.
+
 ## [0.3.0] — 2026-10-23
 
 She can act.

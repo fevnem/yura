@@ -7,6 +7,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod mcp_cmd;
 mod presence;
 mod state;
 mod tools_cmd;
@@ -27,6 +28,7 @@ fn main() {
         ))
         .manage(state::AppState::bootstrap())
         .manage(tools_cmd::Approvals::default())
+        .manage(mcp_cmd::McpState::default())
         .invoke_handler(tauri::generate_handler![
             commands::bootstrap,
             commands::save_settings,
@@ -62,6 +64,14 @@ fn main() {
             tools_cmd::resource_status,
             tools_cmd::download_resource,
             tools_cmd::remove_resource,
+            mcp_cmd::mcp_servers,
+            mcp_cmd::mcp_add_server,
+            mcp_cmd::mcp_remove_server,
+            mcp_cmd::mcp_connect,
+            mcp_cmd::mcp_disconnect,
+            mcp_cmd::mcp_tools,
+            mcp_cmd::mcp_call,
+            mcp_cmd::mcp_summary,
         ])
         .setup(|app| {
             if let Some(main) = app.get_webview_window("main") {

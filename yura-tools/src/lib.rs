@@ -82,7 +82,7 @@ impl Workspace {
     /// non-existent escape is still refused), then canonicalise the parent so a
     /// symlink pointing outside cannot smuggle a write out of the folder.
     pub fn resolve(&self, rel: &str) -> Result<PathBuf> {
-        let rel = rel.trim().trim_start_matches('/').trim_start_matches('\\');
+        let rel = rel.trim();
         let candidate = Path::new(rel);
 
         for component in candidate.components() {

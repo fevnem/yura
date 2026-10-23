@@ -272,9 +272,12 @@ mod tests {
     fn list_puts_pinned_first_then_newest() {
         let s = store("order");
         let a = s.create("A").unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(4));
         let b = s.create("B").unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(4));
         let c = s.create("C").unwrap();
 
+        std::thread::sleep(std::time::Duration::from_millis(4));
         s.append(&b.id, Role::User, "second").unwrap();
         s.set_pinned(&c.id, true).unwrap();
 

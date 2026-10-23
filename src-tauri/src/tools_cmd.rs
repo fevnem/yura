@@ -134,6 +134,7 @@ pub async fn run_tool(
     approvals: State<'_, Approvals>,
     name: String,
     args: serde_json::Value,
+    mcp: State<'_, crate::mcp_cmd::McpState>,
 ) -> Result<ToolOutcome, String> {
     let abilities = agent_settings(&state);
 
@@ -377,6 +378,67 @@ pub async fn run_tool(
             })
         }
 
+        "list_mcp_tools" => {
+            let tools = crate::mcp_cmd::mcp_tools(mcp);
+            if tools.is_empty() {
+                return Ok(ToolOutcome {
+                    ok: false,
+                    output: "No MCP tools connected. Settings → MCP.".to_owned(),
+                });
+            }
+            let body = tools
+                .iter()
+                .map(|t| format!("{}__{} — {}", t.server, t.name, t.description))
+                .collect::<Vec<_>>()
+                .join("\n");
+            Ok(ToolOutcome {
+                ok: true,
+                output: body,
+            })
+        }
+
+        "call_mcp" => {
+            let server = args
+                .get("server")
+                .and_then(|v| v.as_str())
+                .ok_or("call_mcp needs `server`")?
+                .to_owned();
+            let tool = args
+                .get("tool")
+                .and_then(|v| v.as_str())
+                .ok_or("call_mcp needs `tool`")?
+                .to_owned();
+            let arguments = args
+                .get("arguments")
+                .cloned()
+                .unwrap_or_else(|| serde_json::json!({}));
+
+            let preview = serde_json::to_string_pretty(&arguments).unwrap_or_default();
+            if !ask(
+                &app,
+                &approvals,
+                "call_mcp",
+                &format!("Call {server} → {tool}"),
+                &preview,
+                "mcp",
+            )
+            .await
+            {
+                return Ok(ToolOutcome {
+                    ok: false,
+                    output: "The user denied this MCP call.".to_owned(),
+                });
+            }
+
+            match crate::mcp_cmd::call_from_agent(&mcp, &server, &tool, arguments) {
+                Ok(output) => Ok(ToolOutcome { ok: true, output }),
+                Err(error) => Ok(ToolOutcome {
+                    ok: false,
+                    output: error,
+                }),
+            }
+        }
+
         other => Ok(ToolOutcome {
             ok: false,
             output: format!("Unknown tool `{other}`."),
@@ -549,6 +611,15 @@ pub fn tool_protocol(abilities: &yura_core::Abilities) -> String {
     out.push_str("- `list_tasks` — args {}.\n");
     out.push_str("- `complete_task` — args {\"id\": string}.\n");
     out.push_str("- `notify` — args {\"title\": string, \"body\": string}. The user is asked first.\n");
+
+    if crate::mcp_cmd::has_servers() {
+        out.push_str(
+            "- `list_mcp_tools` — args {}. Lists the tools your MCP servers expose.\n\
+             - `call_mcp` — args {\"server\": string, \"tool\": string, \"arguments\": object}. \
+             Ask for the tool list first; the user is shown the arguments before it runs.\n",
+        );
+    }
+
     out
 }
 
