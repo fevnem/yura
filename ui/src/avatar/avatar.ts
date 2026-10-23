@@ -146,13 +146,15 @@ export class Avatar {
       node.rotation.set(x, y, z);
     };
 
-    // Left arm points +X, right arm points −X; rotating about Z drops them.
-    pose('leftUpperArm', 0.06, 0.0, -1.16);
-    pose('rightUpperArm', 0.06, 0.0, 1.16);
-    pose('leftLowerArm', 0.02, -0.12, -0.16);
-    pose('rightLowerArm', 0.02, 0.12, 0.16);
-    pose('leftHand', 0, 0, -0.08);
-    pose('rightHand', 0, 0, 0.08);
+    // Signs verified against the bundled model: positive Z on the left arm
+    // brings it down, mirrored negative on the right. Elbows get a small flex
+    // so the silhouette is not a straight line.
+    pose('leftUpperArm', 0.05, 0.0, 1.18);
+    pose('rightUpperArm', 0.05, 0.0, -1.18);
+    pose('leftLowerArm', 0.0, 0.14, 0.20);
+    pose('rightLowerArm', 0.0, -0.14, -0.20);
+    pose('leftHand', 0, 0, 0.10);
+    pose('rightHand', 0, 0, -0.10);
     pose('head', 0, 0, 0);
   }
 

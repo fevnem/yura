@@ -22,6 +22,7 @@ import { IdleAnimator } from './avatar/idle';
 import { LipSync } from './avatar/lipsync';
 import { Composer } from './chat/composer';
 import { ChatSidebar } from './chat/sidebar';
+import { Welcome } from './chat/welcome';
 import { Transcript } from './chat/transcript';
 import { createLighting, type LightingHandle } from './scene/lights';
 import { Stage } from './scene/stage';
@@ -57,9 +58,12 @@ export class App {
   private telemetry!: Telemetry;
   private skills: Skill[] = [];
   private sidebar!: ChatSidebar;
+  private welcome!: Welcome;
   private chats: ChatSummary[] = [];
   private activeChatId: string | null = null;
   private sidebarOpen = true;
+  /** Horizontal resting position of the character in world units. */
+  private characterX = -0.62;
 
   private beatQueue: Utterance[] = [];
   private draining = false;
@@ -84,7 +88,7 @@ export class App {
     // Composition: the character owns the left of the frame so the transcript
     // has a real column on the right instead of floating over dead space.
     // Lights and effects move with her, or the rim lands on thin air.
-    const characterOffsetX = -0.62;
+    const characterOffsetX = this.characterX;
 
     this.stage = new Stage(canvas, {
       hue: settings.ui.accent_hue,
@@ -188,6 +192,13 @@ export class App {
     this.telemetry.setContext(0, this.bootstrap.settings.llm.context_window);
 
     this.transcript = new Transcript(transcriptEl);
+
+    this.welcome = new Welcome(must<HTMLElement>('#welcome'), (prompt) => {
+      this.composer.setValue(prompt);
+    });
+
+    // The landing screen owns the left half, so she steps aside while it is up.
+    this.setLanding(true);
     this.transcript.setVisible(this.bootstrap.settings.ui.show_transcript);
 
     this.composer = new Composer(form, input, send, mic, {
@@ -312,6 +323,17 @@ export class App {
     });
   }
 
+  /** Landing visible: she steps right, the meters get out of the way. */
+  private setLanding(visible: boolean): void {
+    if (this.welcome) {
+      if (visible) this.welcome.show();
+      else this.welcome.hide();
+    }
+    this.avatar.root.position.x = this.characterX + (visible ? 0.86 : 0);
+    const telemetry = document.querySelector<HTMLElement>('.telemetry');
+    if (telemetry) telemetry.hidden = visible;
+  }
+
   /* ── conversations ─────────────────────────────────────────── */
 
   private async bootChats(): Promise<void> {
@@ -333,8 +355,10 @@ export class App {
   private async selectChat(id: string): Promise<void> {
     const chat = await invoke<Chat | null>('load_chat', { id });
     this.activeChatId = id;
-    this.transcript.load((chat?.messages ?? []).map((m) => ({ role: m.role, content: m.content })));
+    const turns = chat?.messages ?? [];
+    this.transcript.load(turns.map((m) => ({ role: m.role, content: m.content })));
     this.sidebar?.setChats(this.chats, id);
+    this.setLanding(turns.length === 0);
   }
 
   private async newChat(): Promise<void> {
@@ -343,6 +367,7 @@ export class App {
     this.activeChatId = chat.id;
     this.transcript.load([]);
     this.sidebar?.setChats(this.chats, chat.id);
+    this.setLanding(true);
     this.composer.focus();
   }
 
@@ -413,6 +438,7 @@ export class App {
   }
 
   private async send(text: string): Promise<void> {
+    this.setLanding(false);
     this.transcript.addUser(text);
     this.transcript.beginStreaming();
     this.setStatus('thinking');

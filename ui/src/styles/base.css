@@ -70,6 +70,13 @@ select {
   grid-template-columns: 254px 1fr;
 }
 
+/* One column, three occupants: telemetry, transcript, composer. Everything on
+   the right shares these numbers, which is what makes the screen feel composed. */
+.stagewrap {
+  --col: 348px;
+  --gutter: 22px;
+}
+
 /* the stage keeps its own stacking context so the rail can sit beside it */
 .stagewrap {
   position: relative;
@@ -405,10 +412,10 @@ select {
 /* ── transcript ─────────────────────────────────────────────── */
 .transcript {
   position: absolute;
-  top: 66px;
-  right: 18px;
-  bottom: 168px;
-  width: 336px;
+  top: 96px;
+  right: var(--gutter);
+  bottom: 156px;
+  width: var(--col);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -471,7 +478,7 @@ select {
   backdrop-filter: blur(14px) saturate(130%);
   -webkit-backdrop-filter: blur(14px) saturate(130%);
   font-size: 13.5px;
-  line-height: 1.6;
+  line-height: 1.62;
   white-space: pre-wrap;
   word-break: break-word;
   user-select: text;
@@ -500,11 +507,11 @@ select {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
-  letter-spacing: 0.11em;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgb(245 240 250 / 0.5);
-  padding: 0 4px;
+  color: rgb(245 240 250 / 0.46);
+  padding: 0 3px;
 }
 
 .msg-emotion {
@@ -574,14 +581,13 @@ select {
 /* ── dock / composer ────────────────────────────────────────── */
 .dock {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 0 24px 18px;
+  right: var(--gutter);
+  bottom: 14px;
+  width: var(--col);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  align-items: stretch;
+  gap: 7px;
   z-index: 15;
   pointer-events: none;
 }
@@ -591,7 +597,7 @@ select {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  width: min(560px, 100%);
+  width: 100%;
   padding: 7px 7px 7px 8px;
   border-radius: var(--r-pill);
   background: var(--panel);
@@ -706,9 +712,10 @@ select {
 
 .dock-hint {
   margin: 0;
-  font-size: 11.5px;
-  letter-spacing: 0.04em;
-  color: rgb(245 240 250 / 0.62);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  text-align: right;
+  color: rgb(245 240 250 / 0.5);
   transition: opacity var(--t-med) var(--ease);
 }
 
@@ -729,7 +736,7 @@ select {
 /* ── setup card ─────────────────────────────────────────────── */
 .setup {
   position: absolute;
-  left: 50%;
+  left: 34%;
   top: 50%;
   transform: translate(-50%, -50%);
   width: min(400px, calc(100% - 48px));
@@ -1177,12 +1184,15 @@ select {
 /* ── live telemetry ────────────────────────────────────────────── */
 .telemetry {
   position: absolute;
-  right: 22px;
-  bottom: 128px;
+  top: 54px;
+  right: var(--gutter);
+  width: var(--col);
   display: flex;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 6px;
   z-index: 14;
   pointer-events: none;
+  opacity: 0.85;
 }
 
 .telem {
@@ -1238,10 +1248,9 @@ select {
 /* ── thinking strip ────────────────────────────────────────────── */
 .thinking {
   position: absolute;
-  left: 50%;
-  bottom: 180px;
-  transform: translateX(-50%);
-  width: min(620px, 76%);
+  right: var(--gutter);
+  bottom: 168px;
+  width: var(--col);
   display: flex;
   gap: 10px;
   align-items: flex-start;
@@ -1346,4 +1355,87 @@ select {
   margin: 0;
   grid-template-columns: 120px 1fr;
   gap: 12px;
+}
+
+
+/* ── landing screen ────────────────────────────────────────────── */
+.welcome {
+  position: absolute;
+  left: 46px;
+  right: calc(var(--col) + var(--gutter) * 2);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 11;
+  pointer-events: none;
+}
+
+.welcome[hidden] {
+  display: none;
+}
+
+.welcome-inner {
+  width: min(404px, 100%);
+  pointer-events: auto;
+  animation: welcome-in 460ms var(--ease-out) both;
+}
+
+@keyframes welcome-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.welcome-mark {
+  display: block;
+  width: 26px;
+  height: 26px;
+  margin-bottom: 18px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%, #fff 0%, var(--accent-bright) 42%, var(--accent-dim) 74%, transparent 76%),
+    var(--accent);
+  box-shadow: 0 0 28px 2px var(--accent-glow);
+}
+
+.welcome-title {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: 0.005em;
+  color: var(--text);
+}
+
+.welcome-sub {
+  margin: 0 0 26px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-dim);
+  max-width: 42ch;
+}
+
+.welcome-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.welcome-card {
+  padding: 13px 15px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--hairline);
+  background: rgb(255 255 255 / 0.055);
+  border-color: rgb(255 255 255 / 0.1);
+  color: rgb(245 240 250 / 0.78);
+  font-size: 12.5px;
+  line-height: 1.45;
+  text-align: left;
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+
+.welcome-card:hover {
+  background: rgb(255 255 255 / 0.06);
+  border-color: hsl(var(--hue) 55% 60% / 0.35);
+  color: var(--text);
+  transform: translateY(-1px);
 }

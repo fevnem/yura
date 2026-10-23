@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import { createBackdrop, type BackdropHandle } from './backdrop';
+import { createFloor } from './floor';
 import { createParticles, type ParticlesHandle } from './particles';
 import { createPostFX, type PostFXHandle } from './postfx';
 
@@ -29,6 +30,7 @@ export class Stage {
 
   private postfx: PostFXHandle;
   private backdrop: BackdropHandle;
+  private floor: ReturnType<typeof createFloor>;
   private particles: ParticlesHandle;
   private clock = new THREE.Clock();
   private ticks: Tick[] = [];
@@ -37,7 +39,7 @@ export class Stage {
 
   private pointer = new THREE.Vector2(0, 0);
   private observer: ResizeObserver | null = null;
-  private cameraHome = new THREE.Vector3(0, 1.34, 3.15);
+  private cameraHome = new THREE.Vector3(0, 1.18, 3.9);
   private energy = 0;
 
   constructor(canvas: HTMLCanvasElement, initial: StageInitial) {
@@ -56,10 +58,13 @@ export class Stage {
 
     this.camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
     this.camera.position.copy(this.cameraHome);
-    this.camera.lookAt(0, 1.2, 0);
+    this.camera.lookAt(0, 0.94, 0);
 
     this.backdrop = createBackdrop(initial.hue);
     this.scene.add(this.backdrop.mesh);
+
+    this.floor = createFloor(initial.hue, initial.focusX ?? 0);
+    this.scene.add(this.floor.root);
 
     this.particles = createParticles({
       hue: initial.hue,
@@ -117,6 +122,7 @@ export class Stage {
     window.removeEventListener('pointermove', this.onPointerMove);
     this.observer?.disconnect();
     this.backdrop.dispose();
+    this.floor.dispose();
     this.particles.dispose();
     this.postfx.dispose();
     this.renderer.dispose();
@@ -145,7 +151,7 @@ export class Stage {
     const k = 1 - Math.exp(-dt * 2.2);
     this.camera.position.x += (targetX - this.camera.position.x) * k;
     this.camera.position.y += (targetY - this.camera.position.y) * k;
-    this.camera.lookAt(0, 1.2 + this.pointer.y * 0.01, 0);
+    this.camera.lookAt(0, 0.94 + this.pointer.y * 0.01, 0);
   }
 
   private onPointerMove = (event: PointerEvent): void => {
