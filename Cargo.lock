@@ -5896,7 +5896,7 @@ dependencies = [
 
 [[package]]
 name = "yura"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "reqwest 0.12.28",
  "serde",
@@ -5920,7 +5920,7 @@ dependencies = [
 
 [[package]]
 name = "yura-avatar"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -5929,7 +5929,7 @@ dependencies = [
 
 [[package]]
 name = "yura-core"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -5938,7 +5938,7 @@ dependencies = [
 
 [[package]]
 name = "yura-docs"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.22.1",
  "lopdf",
@@ -5949,7 +5949,7 @@ dependencies = [
 
 [[package]]
 name = "yura-llm"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -5963,7 +5963,7 @@ dependencies = [
 
 [[package]]
 name = "yura-mcp"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -5973,7 +5973,7 @@ dependencies = [
 
 [[package]]
 name = "yura-store"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "dirs 5.0.1",
  "serde",
@@ -5985,7 +5985,7 @@ dependencies = [
 
 [[package]]
 name = "yura-tools"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "serde",
  "serde_json",
