@@ -9,7 +9,7 @@
 [![platform: Windows 10 | 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-ffb3c1?style=flat-square&labelColor=140f18)](#install)
 [![installer: 2.1 MB](https://img.shields.io/badge/installer-2.1%20MB-ffb3c1?style=flat-square&labelColor=140f18)](#install)
 [![runtime: WebView2](https://img.shields.io/badge/runtime-WebView2-e9e2d0?style=flat-square&labelColor=140f18)](#install)
-[![tests: 55 passing](https://img.shields.io/badge/tests-55%20passing-e9e2d0?style=flat-square&labelColor=140f18)](#build-from-source)
+[![tests: 99 passing](https://img.shields.io/badge/tests-55%20passing-e9e2d0?style=flat-square&labelColor=140f18)](#build-from-source)
 [![license: MIT](https://img.shields.io/badge/license-MIT-e9e2d0?style=flat-square&labelColor=140f18)](LICENSE)
 
 <img src="docs/screens/01-landing.jpg" alt="Yura's landing screen: a greeting, four study doors in, and the character standing to the right" width="880">
@@ -59,6 +59,25 @@ When the user shares a paper, answer in this order:
 Enabled skills are compiled into her system prompt on every request. Toggle one
 off and it stops applying immediately — nothing is deleted, and nothing needs a
 restart. Three starter skills are installed on first run.
+
+## Abilities — she can act, not only talk
+
+Off by default. Settings → **Abilities**: turn on Python, pick **one** workspace
+folder, and she can write and run scripts inside it.
+
+- 20 second limit with a hard kill, output capped, `-I` isolation so your
+  `PYTHONPATH` cannot leak into the run.
+- Every path is checked twice — lexically for `..`, then again after
+  canonicalisation, so a symlink cannot walk out of the folder.
+- **Every script, file write and notification asks first**, in the chat, showing
+  the exact code or path, with Approve and Deny. Sixty seconds of silence is a no,
+  and the denial is reported back so she can adapt instead of hanging.
+
+The protocol is plain text — a fenced ```` ```yura:run_python ```` block — which is
+why it works with every provider, including local models with no tool-calling API.
+
+She can also set timers, keep a task list, and send a notification through the
+same gate. Timers survive the window being closed and fire exactly once.
 
 ## Live readout
 
@@ -133,7 +152,7 @@ npm install                     # task runner + Tauri CLI
 npm --prefix ui install         # renderer
 
 npm run tauri:dev               # hot-reloading dev window
-npm test                        # 55 unit tests across the crates
+npm test                        # 99 unit tests across the crates
 npm run build:windows           # NSIS installer, cross-compiled
 ```
 
@@ -148,6 +167,8 @@ why MSI needs a Windows host — are written down in
 ```
 crates/yura-core      persona · emotions · messages · skills · reply parser
 crates/yura-llm       LlmProvider trait · OpenAI-compatible · Anthropic · deltas
+crates/yura-tools     sandboxed workspace · python runner · timers · tasks
+crates/yura-docs      PDF text · magic-byte sniffing · prompt blocks
 crates/yura-avatar    emotion → VRM expression weights · viseme tables
 crates/yura-store     chats · settings · skills · atomic writes
 src-tauri             the window: commands, event streaming, cancellation
@@ -166,9 +187,9 @@ if those tables drift apart.
 
 ## Roadmap
 
-Next: **attachments** (PDF and image drop-in), **abilities** (Python with an
-approve/deny gate), a **library** folder she can read and write, downloadable
-voice resources (MOSS-TTS-Nano, Kokoro, Whisper) and MCP servers.
+Shipped in 0.3: abilities with the approve/deny gate, the library folder,
+downloadable voice resources and tray/start-on-login. Next is **MCP servers**,
+then wiring the microphone to Whisper.
 
 The design for each is written down in [docs/plan-0.3.md](docs/plan-0.3.md).
 
