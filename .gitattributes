@@ -1,0 +1,22 @@
+# Normalise line endings for a cross-platform repo that ships to Windows.
+* text=auto eol=lf
+
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+*.ps1           text eol=crlf
+
+# Binaries — never diffed, never converted.
+*.png           binary
+*.jpg           binary
+*.ico           binary
+*.icns          binary
+*.vrm           binary
+*.glb           binary
+*.onnx          binary
+*.exe           binary
+*.msi           binary
+*.dll           binary
+
+# Lockfiles: generated, but worth diffing.
+Cargo.lock      text
+package-lock.json text

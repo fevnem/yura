@@ -1,0 +1,62 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/yura-core",
+    "crates/yura-llm",
+    "crates/yura-avatar",
+    "crates/yura-store",
+    "src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77"
+license = "MIT"
+authors = ["R <fevnem@users.noreply.github.com>"]
+repository = "https://github.com/fevnem/yura"
+homepage = "https://github.com/fevnem/yura"
+
+[workspace.dependencies]
+# ── internal crates ────────────────────────────────────────────
+yura-core = { path = "crates/yura-core" }
+yura-llm = { path = "crates/yura-llm" }
+yura-avatar = { path = "crates/yura-avatar" }
+yura-store = { path = "crates/yura-store" }
+
+# ── serialization ──────────────────────────────────────────────
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# ── errors & observability ─────────────────────────────────────
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# ── async runtime & networking ─────────────────────────────────
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time", "fs"] }
+async-trait = "0.1"
+futures-util = "0.3"
+# native-tls resolves to schannel on Windows, so the Windows build
+# needs no OpenSSL and cross-compiles cleanly from Linux.
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "stream",
+    "native-tls",
+    "charset",
+    "http2",
+] }
+url = "2"
+
+# ── platform ───────────────────────────────────────────────────
+dirs = "5"
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+opt-level = 0

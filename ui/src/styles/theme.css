@@ -1,0 +1,66 @@
+/* ──────────────────────────────────────────────────────────────
+   Yura — design tokens
+   One hue drives the whole palette. Change --hue and the room,
+   the glass, the glow and the avatar rim light all follow.
+   ────────────────────────────────────────────────────────────── */
+
+:root {
+  /* accent — overwritten at runtime from settings.ui.accent_hue */
+  --hue: 340;
+  --accent: hsl(var(--hue) 88% 70%);
+  --accent-bright: hsl(var(--hue) 92% 78%);
+  --accent-dim: hsl(var(--hue) 60% 45%);
+  --accent-wash: hsl(var(--hue) 88% 70% / 0.14);
+  --accent-glow: hsl(var(--hue) 88% 65% / 0.35);
+
+  --violet: hsl(263 78% 72%);
+  --violet-wash: hsl(263 78% 72% / 0.12);
+  --cyan: hsl(190 90% 72%);
+
+  /* ink */
+  --ink: #06050a;
+  --ink-raised: #0c0a12;
+  --text: rgb(245 240 250 / 0.95);
+  --text-dim: rgb(245 240 250 / 0.62);
+  --text-faint: rgb(245 240 250 / 0.42);
+
+  /* glass */
+  --panel: rgb(255 255 255 / 0.042);
+  --panel-hover: rgb(255 255 255 / 0.07);
+  --panel-solid: rgb(16 13 22 / 0.86);
+  --hairline: rgb(255 255 255 / 0.085);
+  --hairline-strong: rgb(255 255 255 / 0.14);
+
+  /* shape */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+
+  /* type */
+  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI Variable Text",
+    "Segoe UI", Inter, Roboto, sans-serif;
+  --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, monospace;
+
+  /* motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-fast: 140ms;
+  --t-med: 260ms;
+  --t-slow: 520ms;
+
+  /* depth */
+  --shadow-panel: 0 24px 80px -24px rgb(0 0 0 / 0.9), 0 2px 12px -4px rgb(0 0 0 / 0.6);
+  --shadow-glow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 12px 48px -12px var(--accent-glow);
+
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-med: 0ms;
+    --t-slow: 0ms;
+  }
+}

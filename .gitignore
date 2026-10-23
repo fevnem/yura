@@ -1,0 +1,32 @@
+# ── build artifacts ─────────────────────────────────────────────
+/target
+**/target/
+src-tauri/gen/
+*.tmp
+
+# ── node ────────────────────────────────────────────────────────
+node_modules/
+ui/dist/
+ui/.vite/
+.pnpm-store/
+
+# ── secrets & local state ───────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.local.json
+
+# ── bundled third-party assets (fetched, never committed) ───────
+# VRM avatars carry per-file licenses; they are downloaded by
+# `npm run avatar:fetch` instead of being redistributed here.
+ui/public/assets/models/*
+!ui/public/assets/models/.gitkeep
+ui/public/assets/audio/*
+!ui/public/assets/audio/.gitkeep
+
+# ── editor / os ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+!.vscode/extensions.json

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Yura</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="stage" aria-hidden="true"></canvas>
+      <div class="scrim" aria-hidden="true"></div>
+
+      <header class="titlebar" data-tauri-drag-region>
+        <div class="brand" data-tauri-drag-region>
+          <span class="brand-glyph" aria-hidden="true"></span>
+          <span class="brand-name">Yura</span>
+          <span class="brand-dot" id="status-dot" aria-hidden="true"></span>
+        </div>
+        <div class="win-actions">
+          <button id="btn-pin" class="win-btn" type="button" title="Pin on top" aria-label="Pin on top">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 1.5 14.5 6.5 11 7.5 8.5 10 8 13.5 2.5 8 6 7.5 8.5 5z"/></svg>
+          </button>
+          <button id="btn-settings" class="win-btn" type="button" title="Settings" aria-label="Settings">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.4"/><path d="M8 1.6v1.8M8 12.6v1.8M14.4 8h-1.8M3.4 8H1.6M12.5 3.5 11.2 4.8M4.8 11.2 3.5 12.5M12.5 12.5 11.2 11.2M4.8 4.8 3.5 3.5"/></svg>
+          </button>
+          <button id="btn-min" class="win-btn" type="button" title="Minimise" aria-label="Minimise">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9"/></svg>
+          </button>
+          <button id="btn-close" class="win-btn danger" type="button" title="Close" aria-label="Close">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <aside id="transcript" class="transcript" aria-live="polite" aria-label="Conversation"></aside>
+
+      <div id="status" class="status" role="status"></div>
+
+      <section id="setup" class="setup" hidden>
+        <p class="setup-kicker">Almost there</p>
+        <h2 class="setup-title">Give Yura a mind</h2>
+        <p class="setup-body">
+          Add a provider and a model in Settings. Local servers (Ollama, LM Studio)
+          work with no key — everything else needs an API key.
+        </p>
+        <button id="setup-open" class="primary" type="button">Open settings</button>
+      </section>
+
+      <footer class="dock">
+        <form id="composer" class="composer" autocomplete="off">
+          <button id="btn-mic" class="pill-btn" type="button" title="Hold to talk" aria-label="Hold to talk">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="6" y="2" width="4" height="7" rx="2"/><path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.2"/></svg>
+          </button>
+          <textarea
+            id="input"
+            rows="1"
+            placeholder="say something to Yura…"
+            aria-label="Message"
+            spellcheck="false"
+          ></textarea>
+          <button id="btn-send" class="send" type="submit" title="Send" aria-label="Send">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8h9M8 3.5 12.5 8 8 12.5"/></svg>
+          </button>
+        </form>
+        <p class="dock-hint">
+          <kbd>enter</kbd> to send · <kbd>shift</kbd>+<kbd>enter</kbd> for a new line ·
+          <kbd>hold</kbd> the mic to talk
+        </p>
+      </footer>
+
+      <section id="settings" class="drawer" hidden aria-label="Settings"></section>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
